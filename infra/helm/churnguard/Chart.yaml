@@ -1,0 +1,18 @@
+apiVersion: v2
+name: churnguard
+description: ChurnGuard churn-prediction API with model hot-reload and Prometheus metrics
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+keywords:
+  - mlops
+  - machine-learning
+  - churn
+  - fastapi
+  - mlflow
+maintainers:
+  - name: ChurnGuard Team
+    url: https://github.com/your-org/churnguard
+annotations:
+  category: MachineLearning

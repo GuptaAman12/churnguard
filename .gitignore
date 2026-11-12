@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Secrets
+.env
+.env.local
+.env.*
+!.env.example
+
+# Data & generated artifacts (versioned with DVC, not git)
+/data/raw/
+/data/processed/
+/data/reference/
+/data/current/
+/dvc-storage/
+/.dvc-storage/
+/.dvc/cache/
+/.dvc/tmp/
+/.dvc/config.local
+/models/*
+!/models/.gitkeep
+/reports/
+/logs/
+/mlruns/
+/mlartifacts/
+/mlflow.db
+/mlflow.db-*
+*.db-journal
+
+# Tooling / OS
+.DS_Store
+Thumbs.db
+*.log
+install*.log
+.idea/
+.vscode/
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Notebooks
+.ipynb_checkpoints/

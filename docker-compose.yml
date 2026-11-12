@@ -1,0 +1,180 @@
+name: churnguard
+
+x-common-env: &common-env
+  CHURNGUARD_TRACKING_URI: http://mlflow:5000
+  CHURNGUARD_EXPERIMENT_NAME: churnguard/churn-classification
+  CHURNGUARD_REGISTRY_MODEL_NAME: churnguard-churn-classifier
+  CHURNGUARD_ENV: prod
+  CHURNGUARD_LOG_LEVEL: INFO
+  CHURNGUARD_LOG_JSON: "true"
+  CHURNGUARD_PUSHGATEWAY_URL: http://pushgateway:9091
+  CHURNGUARD_DRIFT_SHARE_THRESHOLD: "0.3"
+  CHURNGUARD_MODEL_REFRESH_SECONDS: "30"
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+x-app-volumes: &app-volumes
+  - ./data:/app/data
+  - ./models:/app/models
+  - ./reports:/app/reports
+  - ./logs:/app/logs
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  mlflow:
+    build:
+      context: .
+      target: mlflow
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - postgresql+psycopg2://mlflow:mlflow@postgres:5432/mlflow
+      - --artifacts-destination
+      - /mlartifacts
+      - --serve-artifacts
+      - --workers
+      - "2"
+      - --allowed-hosts
+      - mlflow,mlflow:5000,localhost,127.0.0.1,api,api:8000
+    environment:
+      MLFLOW_SERVER_DISABLE_TELEMETRY: "true"
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlartifacts:/mlartifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      <<: *common-env
+      CHURNGUARD_API_KEY: ${CHURNGUARD_API_KEY:-}
+    ports:
+      - "8000:8000"
+    volumes: *app-volumes
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+
+  trainer:
+    profiles: ["jobs"]
+    build:
+      context: .
+      target: pipeline
+    command: ["python", "-m", "churnguard.cli", "bootstrap", "--n-trials", "10"]
+    environment: *common-env
+    volumes: *app-volumes
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: "no"
+
+  prefect-server:
+    build:
+      context: .
+      target: pipeline
+    command: ["prefect", "server", "start", "--host", "0.0.0.0", "--port", "4200"]
+    environment:
+      PREFECT_HOME: /app/.prefect
+      PREFECT_API_DATABASE_CONNECTION_URL: sqlite+aiosqlite:////app/.prefect/prefect.db
+      PREFECT_SERVER_API_HOST: 0.0.0.0
+      PREFECT_UI_API_URL: http://localhost:4200/api
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+    ports:
+      - "4200:4200"
+    volumes:
+      - prefectdata:/app/.prefect
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4200/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  prefect-worker:
+    build:
+      context: .
+      target: pipeline
+    command: ["python", "-m", "churnguard.flows.serve"]
+    environment:
+      <<: *common-env
+      PREFECT_API_URL: http://prefect-server:4200/api
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+    volumes: *app-volumes
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./configs/prometheus:/etc/prometheus:ro
+      - prometheusdata:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+      - pushgateway
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/churnguard.json
+    volumes:
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  prometheusdata:
+  grafanadata:
+  prefectdata:

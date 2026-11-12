@@ -1,0 +1,54 @@
+groups:
+  - name: churnguard.slo
+    rules:
+      - alert: ChurnGuardModelNotLoaded
+        expr: churnguard_model_loaded == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: ml-platform
+        annotations:
+          summary: "ChurnGuard has no model loaded"
+          description: >
+            The prediction API has been running without a model for 2 minutes.
+            Check /ready, MLflow registry connectivity and the fallback artifact.
+
+      - alert: ChurnGuardHighErrorRate
+        expr: >
+          sum(rate(churnguard_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(churnguard_http_requests_total[5m])), 0.001)
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "ChurnGuard 5xx error rate above 5%"
+          description: "Error rate has exceeded 5% for 5 minutes."
+
+      - alert: ChurnGuardHighLatency
+        expr: >
+          histogram_quantile(
+            0.95,
+            sum(rate(churnguard_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "ChurnGuard p95 latency above 1s"
+          description: "p95 request latency has exceeded 1 second for 5 minutes."
+
+      - alert: ChurnGuardHighDriftShare
+        expr: max(churnguard_drift_share) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          team: ml-platform
+        annotations:
+          summary: "ChurnGuard feature drift above 30%"
+          description: >
+            More than 30% of monitored features are drifting. Inspect the
+            Evidently report and consider retraining via the Prefect flow.

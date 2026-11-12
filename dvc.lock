@@ -1,0 +1,71 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python -m churnguard.cli ingest --url 
+      https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
+    deps:
+    - path: src/churnguard/cli.py
+      hash: md5
+      md5: 8c5f47c02184f2fa87457cb8a91708e6
+      size: 10106
+    - path: src/churnguard/ingest.py
+      hash: md5
+      md5: c7cd831763eb18e4ae4a09b5b598d78d
+      size: 2344
+    - path: src/churnguard/schema.py
+      hash: md5
+      md5: 5ba78e7bf5ddefb70c24feea91d811ea
+      size: 3872
+    - path: src/churnguard/synthetic.py
+      hash: md5
+      md5: cfb77d8bef57eb37cf372e419c48a406
+      size: 3088
+    params:
+      params.yaml:
+        data.url: 
+          https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
+    outs:
+    - path: data/raw/telco_churn.csv
+      hash: md5
+      md5: 3b0bfab28a8101b4e4fdd08025a5c235
+      size: 970457
+  split:
+    cmd: python -m churnguard.cli split --test-size 0.2 --seed 42
+    deps:
+    - path: data/raw/telco_churn.csv
+      hash: md5
+      md5: 3b0bfab28a8101b4e4fdd08025a5c235
+      size: 970457
+    - path: src/churnguard/constants.py
+      hash: md5
+      md5: 3b17219fb722b7edfad5ef1ca1e0aaa5
+      size: 2826
+    - path: src/churnguard/data.py
+      hash: md5
+      md5: bd84874317a9cda7252a99e564b4e9b9
+      size: 4955
+    - path: src/churnguard/features.py
+      hash: md5
+      md5: 52cb10fd5d4a4eed969a4a7815a86a11
+      size: 3625
+    - path: src/churnguard/schema.py
+      hash: md5
+      md5: 5ba78e7bf5ddefb70c24feea91d811ea
+      size: 3872
+    params:
+      params.yaml:
+        split.seed: 42
+        split.test_size: 0.2
+    outs:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: a0bf333d65682356ab9600d7991f5e05
+      size: 29094
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: d8ac95b37f5fe750999d5246233edc5a
+      size: 72595
+    - path: data/reference/reference.parquet
+      hash: md5
+      md5: d8ac95b37f5fe750999d5246233edc5a
+      size: 72595

@@ -1,0 +1,14 @@
+ChurnGuard has been deployed.
+
+1. Check the rollout:
+   kubectl rollout status deployment/{{ include "churnguard.fullname" . }} -n {{ .Release.Namespace }}
+
+2. Port-forward and verify readiness:
+   kubectl port-forward svc/{{ include "churnguard.fullname" . }} 8080:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+   curl http://localhost:8080/ready
+
+3. OpenAPI docs: http://localhost:8080/docs
+   Prometheus metrics: http://localhost:8080/metrics
+
+The API loads the "champion" alias from MLflow and hot-reloads it every
+{{ .Values.env.CHURNGUARD_MODEL_REFRESH_SECONDS }} seconds.

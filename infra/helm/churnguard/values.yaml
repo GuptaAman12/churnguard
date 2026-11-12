@@ -1,0 +1,131 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/churnguard-api
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: churnguard.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 20
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 5
+  failureThreshold: 24
+
+env:
+  CHURNGUARD_TRACKING_URI: http://mlflow.ml-platform.svc.cluster.local:5000
+  CHURNGUARD_ENV: production
+  CHURNGUARD_LOG_LEVEL: INFO
+  CHURNGUARD_LOG_JSON: "true"
+  CHURNGUARD_MODEL_REFRESH_SECONDS: "60"
+  CHURNGUARD_DRIFT_SHARE_THRESHOLD: "0.3"
+  CHURNGUARD_PUSHGATEWAY_URL: http://prometheus-pushgateway.monitoring.svc.cluster.local:9091
+
+secrets:
+  # When set, the chart creates a Secret and the API requires X-API-Key.
+  apiKey: ""
+# Or reference an externally managed secret containing CHURNGUARD_API_KEY.
+existingSecret: ""
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+serviceMonitor:
+  enabled: false
+  interval: 15s
+  scrapeTimeout: 10s
+  labels: {}
+  relabelings: []
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: churnguard
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

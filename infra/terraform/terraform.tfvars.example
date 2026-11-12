@@ -1,0 +1,10 @@
+aws_region             = "us-east-1"
+project_name           = "churnguard"
+environment            = "prod"
+api_image_tag          = "REPLACE_WITH_GIT_SHA"
+mlflow_image_tag       = "REPLACE_WITH_GIT_SHA"
+desired_count          = 2
+db_instance_class      = "db.t4g.micro"
+skip_final_snapshot    = true
+force_destroy_bucket   = false
+# certificate_arn      = "arn:aws:acm:us-east-1:123456789012:certificate/..."

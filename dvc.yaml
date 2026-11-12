@@ -1,0 +1,30 @@
+stages:
+  ingest:
+    desc: Download and validate the raw IBM Telco churn dataset.
+    cmd: python -m churnguard.cli ingest --url ${data.url}
+    deps:
+      - src/churnguard/cli.py
+      - src/churnguard/ingest.py
+      - src/churnguard/schema.py
+      - src/churnguard/synthetic.py
+    params:
+      - data.url
+    outs:
+      - data/raw/telco_churn.csv
+
+  split:
+    desc: Clean, validate, split and fingerprint the dataset.
+    cmd: python -m churnguard.cli split --test-size ${split.test_size} --seed ${split.seed}
+    deps:
+      - data/raw/telco_churn.csv
+      - src/churnguard/data.py
+      - src/churnguard/schema.py
+      - src/churnguard/constants.py
+      - src/churnguard/features.py
+    params:
+      - split.test_size
+      - split.seed
+    outs:
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+      - data/reference/reference.parquet
