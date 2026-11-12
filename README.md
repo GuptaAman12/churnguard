@@ -89,6 +89,7 @@ flowchart LR
 ```
 
 Full design notes: [`docs/architecture.md`](docs/architecture.md) ·
+**Complete project guide: [`docs/project-guide.md`](docs/project-guide.md)** ·
 ADRs: [`docs/adr/`](docs/adr/) · Runbook: [`docs/runbook.md`](docs/runbook.md) ·
 Model card: [`docs/model-card.md`](docs/model-card.md)
 
