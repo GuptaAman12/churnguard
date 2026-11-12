@@ -83,6 +83,8 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+# sklearn's estimator API intentionally uses X.
+"src/churnguard/modeling/calibration.py" = ["N803", "N806"]
 
 [tool.ruff.format]
 quote-style = "double"

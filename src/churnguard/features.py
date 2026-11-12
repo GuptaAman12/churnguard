@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -74,22 +76,32 @@ def build_pipeline(classifier: object) -> Pipeline:
     )
 
 
-def get_feature_names(pipeline: Pipeline) -> list[str]:
+def unwrap_estimator(artifact: object) -> Any:
+    """Return the sklearn pipeline inside an optional calibration wrapper."""
+    inner = getattr(artifact, "estimator_", None)
+    if inner is not None and hasattr(inner, "named_steps"):
+        return inner
+    return artifact
+
+
+def get_feature_names(pipeline: Pipeline | object) -> list[str]:
     """Extract transformed feature names when the classifier exposes them."""
-    preprocessor: ColumnTransformer = pipeline.named_steps["preprocess"]
+    estimator = unwrap_estimator(pipeline)
+    preprocessor: ColumnTransformer = estimator.named_steps["preprocess"]
     try:
         return [str(name) for name in preprocessor.get_feature_names_out()]
     except Exception:  # pragma: no cover - defensive
         return []
 
 
-def model_feature_importance(pipeline: Pipeline) -> dict[str, float]:
+def model_feature_importance(pipeline: Pipeline | object) -> dict[str, float]:
     """Map transformed feature importances back to human-readable names."""
-    classifier = pipeline.named_steps["classifier"]
+    estimator = unwrap_estimator(pipeline)
+    classifier = estimator.named_steps["classifier"]
     if not hasattr(classifier, "feature_importances_"):
         return {}
     importances = np.asarray(classifier.feature_importances_, dtype=float)
-    names = get_feature_names(pipeline)
+    names = get_feature_names(estimator)
     if len(names) != len(importances):
         return {f"feature_{i}": float(v) for i, v in enumerate(importances)}
     ranked = sorted(zip(names, importances, strict=True), key=lambda item: item[1], reverse=True)

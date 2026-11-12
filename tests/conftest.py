@@ -117,6 +117,33 @@ class StubModelService:
     def model_metadata(self) -> dict[str, Any]:
         return {**self.descriptor(), "metrics": {"roc_auc": 0.84}}
 
+    def explain(self, frame: pd.DataFrame, *, top_k: int = 8) -> dict[str, Any]:
+        features = [
+            {
+                "feature": "Contract_Month-to-month",
+                "contribution": 0.91,
+                "direction": "increases",
+            },
+            {
+                "feature": "tenure",
+                "contribution": -0.42,
+                "direction": "decreases",
+            },
+            {
+                "feature": "MonthlyCharges",
+                "contribution": 0.18,
+                "direction": "increases",
+            },
+        ][:top_k]
+        return {
+            "base_value": -1.1,
+            "margin": 0.67,
+            "raw_probability": 0.72,
+            "calibrated_probability": self._probability,
+            "top_features": features,
+            "caveat": "stub explanation",
+        }
+
 
 @pytest.fixture
 def stub_service() -> StubModelService:

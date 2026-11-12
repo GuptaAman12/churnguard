@@ -54,7 +54,7 @@ services:
       - --workers
       - "1"
       - --allowed-hosts
-      - mlflow,mlflow:5000,localhost,127.0.0.1,api,api:8000
+      - mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000,api,api:8000
     environment:
       MLFLOW_SERVER_DISABLE_TELEMETRY: "true"
       MLFLOW_DISABLE_AGENT_HINT: "1"

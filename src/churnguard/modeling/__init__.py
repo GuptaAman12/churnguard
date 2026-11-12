@@ -1,12 +1,6 @@
-"""Modeling package."""
+"""Modeling subpackage.
 
-from churnguard.modeling.evaluate import EvaluationResult, compute_metrics, evaluate
-from churnguard.modeling.train import TrainResult, train_and_log
-
-__all__ = [
-    "EvaluationResult",
-    "TrainResult",
-    "compute_metrics",
-    "evaluate",
-    "train_and_log",
-]
+Intentionally free of eager imports: the slim API image loads pickled artifacts
+from :mod:`churnguard.modeling.calibration` but does not install training
+dependencies (Optuna, Prefect, DVC). Import concrete modules directly.
+"""

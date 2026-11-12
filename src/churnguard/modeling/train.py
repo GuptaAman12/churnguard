@@ -16,7 +16,7 @@ import optuna
 import pandas as pd
 from mlflow import MlflowClient
 from mlflow.models import infer_signature
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_val_score
 
 from churnguard.config import Settings
 from churnguard.constants import TARGET_COLUMN
@@ -27,6 +27,10 @@ from churnguard.features import (
     model_feature_importance,
 )
 from churnguard.logging import get_logger
+from churnguard.modeling.calibration import (
+    CalibrationReport,
+    build_calibrated_artifact,
+)
 from churnguard.modeling.evaluate import EvaluationResult, evaluate, subgroup_metrics
 from churnguard.modeling.registry import decide_promotion, promote
 from churnguard.schema import validate_processed
@@ -180,6 +184,7 @@ def build_model_card(
     data_fingerprint: str,
     subgroup: dict[str, dict[str, float]],
     feature_importance: dict[str, float],
+    calibration: CalibrationReport,
 ) -> str:
     top_features = list(feature_importance.items())[:8]
     feature_lines = "\n".join(f"| `{name}` | {value:.4f} |" for name, value in top_features)
@@ -188,12 +193,18 @@ def build_model_card(
         f"{int(values.get('n', 0))} |"
         for group, values in subgroup.items()
     )
+    calibration_note = (
+        "Isotonic calibration applied (fitted on out-of-fold predictions)."
+        if calibration.applied
+        else "Calibration rejected because it did not improve test log loss."
+    )
     return f"""# Model Card — ChurnGuard churn classifier
 
 **Generated:** {datetime.now(UTC).isoformat()}  
 **Algorithm:** XGBoost ({params.get("n_estimators")} trees, depth {params.get("max_depth")})  
 **Data fingerprint:** `{data_fingerprint}`  
-**Decision threshold:** {threshold:.4f}
+**Decision threshold:** {threshold:.4f}  
+**Calibration:** {calibration.method}
 
 ## Intended use
 Estimate the probability that a telecom customer will churn so that retention
@@ -211,6 +222,15 @@ teams can prioritise outreach. Not intended for automated adverse decisions
 | Log loss | {metrics.get("log_loss", 0):.4f} |
 | Brier score | {metrics.get("brier_score", 0):.4f} |
 
+## Calibration
+{calibration_note}
+
+| Metric | Raw | Served |
+|---|---|---|
+| Log loss | {calibration.raw.log_loss:.4f} | {calibration.calibrated.log_loss:.4f} |
+| Brier score | {calibration.raw.brier_score:.4f} | {calibration.calibrated.brier_score:.4f} |
+| ECE (10 bins) | {calibration.raw.ece:.4f} | {calibration.calibrated.ece:.4f} |
+
 ## Disaggregated performance
 | Group | ROC-AUC | Recall | n |
 |---|---|---|---|
@@ -221,12 +241,17 @@ teams can prioritise outreach. Not intended for automated adverse decisions
 |---|---|
 {feature_lines}
 
+## Explanations
+Per-prediction TreeSHAP values are exposed at `POST /explain`. Contributions are
+in log-odds space and identify which features push a customer toward or away
+from churn.
+
 ## Limitations
 - Trained on a single public IBM telecom dataset; geography and product mix differ
   from production populations.
 - Churn label reflects historical outcomes and may encode selection bias.
 - Drift detection must be paired with periodic retraining and human review.
-- Probabilities are not calibrated post-hoc; use rank ordering for prioritisation.
+- Calibration is fitted on historical data; monitor reliability after drift.
 """
 
 
@@ -312,7 +337,28 @@ def train_and_log(
         )
         pipeline.fit(features_train, target_train)
 
-        proba = pipeline.predict_proba(features_test)[:, 1]
+        calibration_cv = StratifiedKFold(
+            n_splits=settings.cv_folds,
+            shuffle=True,
+            random_state=settings.random_state,
+        )
+        out_of_fold = cross_val_predict(
+            pipeline,
+            features_train,
+            target_train,
+            cv=calibration_cv,
+            method="predict_proba",
+            n_jobs=1,
+        )[:, 1]
+        raw_proba = pipeline.predict_proba(features_test)[:, 1]
+        artifact, calibration = build_calibrated_artifact(
+            pipeline,
+            out_of_fold,
+            target_train.to_numpy(),
+            target_test.to_numpy(),
+            raw_proba,
+        )
+        proba = artifact.predict_proba(features_test)[:, 1]
         evaluation: EvaluationResult = evaluate(target_test.to_numpy(), proba)
         metrics = evaluation.metrics
 
@@ -332,14 +378,27 @@ def train_and_log(
                 "learning_rate": best_params.get("learning_rate", DEFAULT_PARAMS["learning_rate"]),
                 "model_type": "xgboost",
                 "feature_count": len(get_feature_names(pipeline)),
+                "calibration_method": calibration.method,
+                "calibration_applied": calibration.applied,
             }
         )
         mlflow.log_metrics({f"test_{key}": value for key, value in metrics.items()})
+        mlflow.log_metrics(
+            {
+                "raw_log_loss": calibration.raw.log_loss,
+                "raw_brier_score": calibration.raw.brier_score,
+                "raw_ece": calibration.raw.ece,
+                "calibrated_log_loss": calibration.calibrated.log_loss,
+                "calibrated_brier_score": calibration.calibrated.brier_score,
+                "calibrated_ece": calibration.calibrated.ece,
+            }
+        )
         mlflow.log_metric("decision_threshold", evaluation.threshold)
         mlflow.log_dict(evaluation.to_dict(), "evaluation/metrics.json")
         mlflow.log_dict(subgroups, "evaluation/subgroup_metrics.json")
         mlflow.log_dict(importance, "evaluation/feature_importance.json")
         mlflow.log_dict({"fpr_tpr": evaluation.roc_curve}, "evaluation/roc_curve.json")
+        mlflow.log_dict(calibration.to_dict(), "evaluation/calibration.json")
 
         model_card = build_model_card(
             metrics=metrics,
@@ -348,19 +407,23 @@ def train_and_log(
             data_fingerprint=fingerprint,
             subgroup=subgroups,
             feature_importance=importance,
+            calibration=calibration,
         )
         mlflow.log_text(model_card, "model_card.md")
 
         signature = infer_signature(
-            features_train.head(50), pipeline.predict_proba(features_train.head(50))[:, 1]
+            features_train.head(50), artifact.predict_proba(features_train.head(50))[:, 1]
         )
         model_info = mlflow.sklearn.log_model(
-            sk_model=pipeline,
+            sk_model=artifact,
             name="model",
             signature=signature,
             input_example=features_train.head(5),
             registered_model_name=settings.registry_model_name if register else None,
-            metadata={"decision_threshold": evaluation.threshold},
+            metadata={
+                "decision_threshold": evaluation.threshold,
+                "calibration_method": calibration.method,
+            },
             # The artifact contains a trusted, in-repo feature-engineering function.
             # Pickle keeps the registry artifact portable across the API/pipeline images.
             serialization_format="pickle",
@@ -387,23 +450,30 @@ def train_and_log(
                 data_fingerprint=fingerprint,
                 threshold=evaluation.threshold,
             )
+            client.set_model_version_tag(
+                settings.registry_model_name,
+                version,
+                "calibration_method",
+                calibration.method,
+            )
             promoted = decision.promoted
             reason = decision.reason
         else:  # pragma: no cover - defensive
             reason = "registered model version not found"
 
     if save_fallback:
-        joblib.dump(pipeline, settings.fallback_model_path)
+        joblib.dump(artifact, settings.fallback_model_path)
         metadata = {
             "run_id": run_id,
             "version": version,
             "model_uri": model_info.model_uri,
             "threshold": evaluation.threshold,
             "metrics": metrics,
+            "calibration": calibration.to_dict(),
             "trained_at": datetime.now(UTC).isoformat(),
             "data_fingerprint": fingerprint,
             "git_sha": sha,
-            "feature_names": get_feature_names(pipeline),
+            "feature_names": get_feature_names(artifact),
         }
         settings.fallback_model_path.with_suffix(".json").write_text(
             _json_dumps(metadata), encoding="utf-8"

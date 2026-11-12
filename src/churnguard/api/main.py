@@ -27,6 +27,7 @@ from churnguard.api.schemas import (
     CustomerFeatures,
     DriftFeature,
     DriftSummaryResponse,
+    ExplanationResponse,
     HealthResponse,
     ModelDescriptor,
     PredictionResponse,
@@ -137,8 +138,9 @@ def create_app(
     app = FastAPI(
         title="ChurnGuard Prediction API",
         description=(
-            "Real-time customer-churn scoring with MLflow-backed model registry, "
-            "Prometheus metrics and drift monitoring."
+            "Calibrated, explainable customer-churn scoring with an MLflow-backed "
+            "model registry, TreeSHAP explanations, Prometheus metrics and drift "
+            "monitoring."
         ),
         version=settings.api_version,
         lifespan=lifespan,
@@ -196,6 +198,7 @@ def create_app(
             "docs": "/docs",
             "metrics": "/metrics",
             "model_info": "/model/info",
+            "explain": "/explain",
         }
 
     @app.get("/health", response_model=HealthResponse, tags=["meta"])
@@ -255,6 +258,36 @@ def create_app(
             model_version=descriptor.get("version"),
         )
         return response
+
+    @app.post(
+        "/explain",
+        response_model=ExplanationResponse,
+        tags=["inference"],
+        dependencies=[Depends(_require_api_key)],
+    )
+    async def explain(payload: CustomerFeatures, request: Request) -> ExplanationResponse:
+        svc = _service(request)
+        descriptor = svc.descriptor()
+        frame = payload.to_frame()
+        explanation = await run_in_threadpool(svc.explain, frame)
+        response = _prediction_payload(
+            features=payload,
+            probability=float(explanation["calibrated_probability"]),
+            service=svc,
+            descriptor=descriptor,
+        )
+        _record_prediction(response)
+        fields = {
+            key: value for key, value in explanation.items() if key != "calibrated_probability"
+        }
+        logger.info(
+            "explanation_served",
+            prediction_id=response.prediction_id,
+            probability=response.churn_probability,
+            top_feature=fields["top_features"][0]["feature"] if fields["top_features"] else None,
+            model_version=descriptor.get("version"),
+        )
+        return ExplanationResponse(prediction=response, **fields)
 
     @app.post(
         "/predict/batch",
