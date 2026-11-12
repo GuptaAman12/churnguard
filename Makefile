@@ -8,7 +8,7 @@ PY := uv run
 COMPOSE := docker compose
 
 .PHONY: help install data pipeline train serve drift batch test lint format typecheck check \
-        docker-build docker-up docker-down docker-logs mlflow clean
+        security infra smoke docker-build docker-up docker-down docker-logs mlflow clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -57,6 +57,26 @@ typecheck: ## Strict mypy
 	$(PY) mypy src
 
 check: lint typecheck test ## Full local quality gate
+
+security: ## Audit locked dependencies for known CVEs
+	uv export --format requirements-txt --no-hashes --all-groups > requirements.txt
+	uv tool run pip-audit -r requirements.txt --strict || true
+	rm -f requirements.txt
+
+infra: ## Validate Terraform and Helm locally
+	terraform -chdir=infra/terraform fmt -check -recursive
+	terraform -chdir=infra/terraform init -backend=false -input=false
+	terraform -chdir=infra/terraform validate -no-color
+	helm lint infra/helm/churnguard
+	helm template churnguard infra/helm/churnguard --namespace churnguard > /dev/null
+
+smoke: ## Probe a running local stack
+	curl -fsS http://127.0.0.1:8000/health
+	curl -fsS http://127.0.0.1:8000/ready
+	curl -fsS http://127.0.0.1:8000/model/info
+	curl -fsS http://127.0.0.1:5000/health
+	curl -fsS http://127.0.0.1:9090/-/healthy
+	curl -fsS http://127.0.0.1:3000/api/health
 
 docker-build: ## Build all container images
 	$(COMPOSE) build
