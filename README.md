@@ -228,7 +228,7 @@ uv run pytest                      # 76 tests, coverage gate
 uv run pre-commit run --all-files
 ```
 
-Current state: **77 tests passing**, **~83% branch coverage**, `ruff` clean,
+Current state: **78 tests passing**, **~83% branch coverage**, `ruff` clean,
 `mypy --strict` clean across 30 source modules.
 
 ## Project layout

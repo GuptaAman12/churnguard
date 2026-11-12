@@ -89,6 +89,9 @@ class ModelService:
 
     def refresh_if_changed(self) -> bool:
         """Poll the registry; reload only when the champion version changes."""
+        # A pinned model URI is immutable by design; polling would only churn.
+        if self.settings.model_uri is not None:
+            return False
         try:
             champion = self._client.get_model_version_by_alias(
                 self.settings.registry_model_name, self.settings.champion_alias

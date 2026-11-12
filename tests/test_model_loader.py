@@ -103,6 +103,16 @@ def test_refresh_returns_false_when_registry_errors(settings, monkeypatch) -> No
     assert service.refresh_if_changed() is False
 
 
+def test_refresh_is_skipped_for_pinned_model_uri(settings, monkeypatch) -> None:
+    pinned = settings.model_copy(update={"model_uri": "models:/pinned/1"})
+    service = ModelService(pinned)
+    calls: list[bool] = []
+    monkeypatch.setattr(service, "load", lambda: calls.append(True))
+
+    assert service.refresh_if_changed() is False
+    assert calls == []
+
+
 def test_unreadable_metadata_is_ignored(settings, trained_pipeline) -> None:
     settings.ensure_directories()
     joblib.dump(trained_pipeline, settings.fallback_model_path)
