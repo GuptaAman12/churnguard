@@ -903,28 +903,23 @@ name = "churnguard"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "boto3" },
-    { name = "dvc", extra = ["s3"] },
-    { name = "evidently" },
     { name = "fastapi" },
-    { name = "gunicorn" },
     { name = "httpx" },
     { name = "joblib" },
     { name = "mlflow" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "optuna" },
     { name = "pandas" },
     { name = "pandera", extra = ["pandas"] },
-    { name = "prefect" },
     { name = "prometheus-client" },
-    { name = "psycopg2-binary" },
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -941,30 +936,35 @@ dev = [
     { name = "ruff" },
     { name = "types-pyyaml" },
 ]
+mlflow = [
+    { name = "boto3" },
+    { name = "psycopg2-binary" },
+]
+pipeline = [
+    { name = "boto3" },
+    { name = "dvc", extra = ["s3"] },
+    { name = "evidently" },
+    { name = "optuna" },
+    { name = "prefect" },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", specifier = ">=1.35" },
-    { name = "dvc", extras = ["s3"], specifier = ">=3.50" },
-    { name = "evidently", specifier = ">=0.6" },
     { name = "fastapi", specifier = ">=0.139,<0.151" },
-    { name = "gunicorn", specifier = ">=22.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "joblib", specifier = ">=1.4" },
     { name = "mlflow", specifier = ">=2.16,<4" },
     { name = "numpy", specifier = ">=1.26" },
-    { name = "optuna", specifier = ">=4.0" },
     { name = "pandas", specifier = ">=2.2,<3" },
     { name = "pandera", extras = ["pandas"], specifier = ">=0.20" },
-    { name = "prefect", specifier = ">=3.9,<4" },
     { name = "prometheus-client", specifier = ">=0.20" },
-    { name = "psycopg2-binary", specifier = ">=2.9" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "pydantic", specifier = ">=2.8" },
     { name = "pydantic-settings", specifier = ">=2.4" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "scikit-learn", specifier = ">=1.5" },
+    { name = "scipy", specifier = ">=1.13" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
     { name = "xgboost", specifier = ">=2.1" },
@@ -979,6 +979,17 @@ dev = [
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.6" },
     { name = "types-pyyaml", specifier = ">=6.0" },
+]
+mlflow = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "psycopg2-binary", specifier = ">=2.9" },
+]
+pipeline = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "dvc", extras = ["s3"], specifier = ">=3.50" },
+    { name = "evidently", specifier = ">=0.6" },
+    { name = "optuna", specifier = ">=4.0" },
+    { name = "prefect", specifier = ">=3.9,<4" },
 ]
 
 [[package]]

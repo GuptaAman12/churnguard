@@ -75,7 +75,7 @@ jobs:
         with:
           version: "0.13.7"
       - name: Export locked requirements
-        run: uv export --format requirements-txt --no-hashes --no-dev > requirements.txt
+        run: uv export --format requirements-txt --no-hashes --all-groups > requirements.txt
       - name: pip-audit
         run: |
           uv tool run pip-audit -r requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph || true

@@ -206,8 +206,9 @@ drift share and drifted-feature count.
 
 ### Infrastructure
 
-- Multi-stage `Dockerfile` with `uv` layer caching, non-root user, healthchecks,
-  and `api` / `pipeline` / `mlflow` targets.
+- Multi-stage `Dockerfile` with `uv` layer caching, per-target dependency groups
+  (lean API image; training and MLflow extras installed only where needed),
+  non-root user, healthchecks, and `api` / `pipeline` / `mlflow` targets.
 - `docker-compose.yml` — Postgres, MLflow, API, Prefect server + worker,
   Pushgateway, Prometheus, Grafana.
 - Helm chart — Deployment, Service, HPA, PDB, probes, ServiceMonitor, secrets,
