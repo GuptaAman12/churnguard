@@ -34,7 +34,7 @@ jobs:
           - target: mlflow
             image: churnguard-mlflow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # GHCR requires lowercase repository names; GitHub owners may have caps.
       - name: Lowercase image prefix
@@ -81,7 +81,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'prod' }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
