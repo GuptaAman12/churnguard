@@ -118,12 +118,12 @@ Output:
 
 ```json
 {
-  "prediction_id": "6f1c…",
-  "churn_probability": 0.84217,
+  "prediction_id": "6f1c9a2e-5b7d-4c1a-9f0e-2b8d3a4c5e6f",
+  "churn_probability": 0.903333,
   "churn_prediction": true,
   "risk_tier": "high",
-  "thresholds": { "decision": 0.43 },
-  "model": { "name": "churnguard-churn-classifier", "version": "3", "source": "registry", ... }
+  "thresholds": { "decision": 0.58 },
+  "model": { "name": "churnguard-churn-classifier", "version": "2", "source": "registry", ... }
 }
 ```
 
