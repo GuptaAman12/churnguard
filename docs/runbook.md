@@ -6,7 +6,7 @@
 |---|---|---|---|
 | `api` | 8000 | FastAPI prediction service | `GET /health`, `GET /ready` |
 | `mlflow` | 5000 | Tracking server + registry UI | `GET /health` |
-| `prefect-server` | 4200 | Orchestration UI/API | `GET /api/health` |
+| `prefect-server` | 4200 | Orchestration UI/API (PostgreSQL-backed) | `GET /api/health` |
 | `prometheus` | 9090 | Metrics + alert rules | `/-/healthy` |
 | `pushgateway` | 9091 | Batch drift metric ingestion | `/-/healthy` |
 | `grafana` | 3000 | Dashboards | `/api/health` |
@@ -21,6 +21,11 @@ docker compose up -d postgres mlflow
 docker compose run --rm trainer   # ingest, split, train, register champion
 docker compose up -d              # API, Prefect, Prometheus, Grafana
 ```
+
+> Prefect stores its metadata in a dedicated `prefect` database on the same
+> PostgreSQL instance. `configs/postgres/init.sql` creates it on first
+> initialisation; for a pre-existing volume run:
+> `docker compose exec postgres psql -U mlflow -c "CREATE DATABASE prefect"`.
 
 Verify:
 
@@ -117,5 +122,6 @@ docker compose exec prefect-worker python -c \
 ## Data retention
 
 - Prediction logs rotate at 50 MB (`logs/predictions.jsonl.1` keeps one generation).
-- MLflow artifacts are versioned in S3 (prod) / named volume (local); ECR keeps the last 20 images.
+- MLflow artifacts live on the `./mlartifacts` bind mount locally and in S3 in
+  production; ECR keeps the last 20 images.
 - Drift reports keep a timestamped history under `reports/drift/history/`.

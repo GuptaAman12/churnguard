@@ -117,6 +117,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build pipeline image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: pipeline
+          push: false
+          tags: churnguard-pipeline:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   config:
     name: Validate infra & workflow config
     runs-on: ubuntu-latest

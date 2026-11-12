@@ -27,6 +27,7 @@ services:
       POSTGRES_DB: mlflow
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./configs/postgres/init.sql:/docker-entrypoint-initdb.d/10-prefect.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
       interval: 5s
@@ -51,7 +52,7 @@ services:
       - /mlartifacts
       - --serve-artifacts
       - --workers
-      - "2"
+      - "1"
       - --allowed-hosts
       - mlflow,mlflow:5000,localhost,127.0.0.1,api,api:8000
     environment:
@@ -101,14 +102,15 @@ services:
     command: ["prefect", "server", "start", "--host", "0.0.0.0", "--port", "4200"]
     environment:
       PREFECT_HOME: /app/.prefect
-      PREFECT_API_DATABASE_CONNECTION_URL: sqlite+aiosqlite:////app/.prefect/prefect.db
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://mlflow:mlflow@postgres:5432/prefect
       PREFECT_SERVER_API_HOST: 0.0.0.0
       PREFECT_UI_API_URL: http://localhost:4200/api
       PREFECT_SERVER_ANALYTICS_ENABLED: "false"
     ports:
       - "4200:4200"
-    volumes:
-      - prefectdata:/app/.prefect
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:4200/api/health || exit 1"]
       interval: 10s
@@ -177,4 +179,3 @@ volumes:
   pgdata:
   prometheusdata:
   grafanadata:
-  prefectdata:

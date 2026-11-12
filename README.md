@@ -159,6 +159,10 @@ The Grafana dashboard is provisioned from
 model-loaded status, request rate, p50/p95 latency, predictions by risk tier,
 drift share and drifted-feature count.
 
+MLflow artifacts are stored in `./mlartifacts` locally (S3 in production), and
+Prefect keeps its metadata in a dedicated `prefect` database inside the shared
+PostgreSQL instance.
+
 ## What's inside
 
 ### Data & validation
