@@ -2,7 +2,7 @@
 # Multi-target image. All targets share a locked core environment; heavier
 # training/orchestration and MLflow-only dependencies are added per target so
 # the API image stays lean.
-FROM python:3.12-slim AS base
+FROM python:3.15-slim AS base
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
 
