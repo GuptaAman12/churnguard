@@ -114,6 +114,22 @@ All knobs are `CHURNGUARD_*` environment variables with typed validation,
 documented defaults, and a `.env.example`. The same image runs locally, in
 Compose, and on ECS Fargate.
 
+### 7. Calibration is fitted out-of-fold and kept only when it helps
+
+Probabilities are calibrated with isotonic regression fitted on out-of-fold
+training predictions, so the test set never influences the curve. The candidate
+calibrator is benchmarked on test log loss; if it does not improve, the pipeline
+ships uncalibrated and the model card records `calibration_method=identity`.
+This is why log loss fell from 0.48 to 0.42 while ROC-AUC was unchanged.
+
+### 8. Explanations use the trees that actually scored the customer
+
+`/explain` calls `Booster.predict(pred_contribs=True)` — exact TreeSHAP computed
+by XGBoost itself. No second surrogate model and no external SHAP dependency.
+Contributions are in log-odds space; the endpoint returns both the
+pre-calibration probability (which the contributions explain) and the served,
+calibrated probability.
+
 ## Data & model lineage
 
 ```

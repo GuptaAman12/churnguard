@@ -34,6 +34,7 @@ curl -s localhost:8000/health
 curl -s localhost:8000/ready
 curl -s localhost:8000/model/info
 curl -s localhost:8000/metrics | grep churnguard_
+# POST the sample payload from the README to /predict and /explain
 open http://localhost:5000     # MLflow
 open http://localhost:3000     # Grafana (admin/admin)
 open http://localhost:4200     # Prefect

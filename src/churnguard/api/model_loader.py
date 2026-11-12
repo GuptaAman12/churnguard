@@ -204,6 +204,16 @@ class ModelService:
             "metrics": bundle.metrics,
         }
 
+    def explain(self, frame: pd.DataFrame, *, top_k: int = 8) -> dict[str, Any]:
+        """Return TreeSHAP contributions for the first row of ``frame``."""
+        from churnguard.explain import explain_prediction
+
+        with self._lock:
+            bundle = self._bundle
+        if bundle is None:
+            raise ModelNotAvailableError("Model is not loaded")
+        return explain_prediction(bundle.pipeline, frame, top_k=top_k)
+
 
 def _read_metadata(path: Path) -> dict[str, Any]:
     if not path.exists():

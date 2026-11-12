@@ -81,6 +81,17 @@ def test_batch_prediction(client, customer_payload) -> None:
     assert body["latency_ms"] >= 0
 
 
+def test_explanation_endpoint(client, customer_payload) -> None:
+    response = client.post("/explain", json=customer_payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["prediction"]["churn_probability"] == pytest.approx(0.73)
+    assert body["top_features"][0]["feature"] == "Contract_Month-to-month"
+    assert body["top_features"][0]["direction"] == "increases"
+    assert body["base_value"] == pytest.approx(-1.1)
+    assert body["caveat"]
+
+
 def test_batch_rejects_empty_payload(client) -> None:
     assert client.post("/predict/batch", json={"customers": []}).status_code == 422
 
@@ -90,6 +101,7 @@ def test_api_key_enforcement(settings, customer_payload) -> None:
     app = create_app(secured_settings, StubModelService())
     with TestClient(app) as client:
         assert client.post("/predict", json=customer_payload).status_code == 401
+        assert client.post("/explain", json=customer_payload).status_code == 401
         assert (
             client.post(
                 "/predict", json=customer_payload, headers={"X-API-Key": "wrong"}
@@ -147,6 +159,7 @@ def test_unloaded_model_returns_503(settings, customer_payload) -> None:
     with TestClient(app) as client:
         assert client.get("/ready").json()["ready"] is False
         assert client.post("/predict", json=customer_payload).status_code == 503
+        assert client.post("/explain", json=customer_payload).status_code == 503
         assert client.get("/model/info").status_code == 503
 
 

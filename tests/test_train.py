@@ -42,11 +42,16 @@ def test_train_and_log_without_registration(tracking_settings, split_frames) -> 
     )
     assert metadata["threshold"] == pytest.approx(result.threshold)
     assert metadata["metrics"]["roc_auc"] == pytest.approx(result.metrics["roc_auc"])
+    assert metadata["calibration"]["method"] in {"isotonic", "identity"}
 
     run = mlflow.get_run(result.run_id)
     assert run.data.metrics["test_roc_auc"] == pytest.approx(result.metrics["roc_auc"])
     assert run.data.tags["git_sha"]
     assert run.data.params["model_type"] == "xgboost"
+    assert run.data.params["calibration_method"] in {"isotonic", "identity"}
+    assert "raw_log_loss" in run.data.metrics
+    assert "calibrated_log_loss" in run.data.metrics
+    assert "calibrated_ece" in run.data.metrics
 
     artifacts = mlflow.artifacts.list_artifacts(run_id=result.run_id)
     artifact_names = {artifact.path for artifact in artifacts}

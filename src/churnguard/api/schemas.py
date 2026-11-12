@@ -87,6 +87,21 @@ class BatchPredictionResponse(BaseModel):
     model: ModelDescriptor
 
 
+class FeatureContribution(BaseModel):
+    feature: str
+    contribution: float
+    direction: Literal["increases", "decreases"]
+
+
+class ExplanationResponse(BaseModel):
+    prediction: PredictionResponse
+    base_value: float
+    margin: float
+    raw_probability: float
+    top_features: list[FeatureContribution]
+    caveat: str
+
+
 class HealthResponse(BaseModel):
     status: str
     version: str
