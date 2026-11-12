@@ -62,8 +62,8 @@ dev = [
 churnguard = "churnguard.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/churnguard"
-Documentation = "https://github.com/your-org/churnguard#readme"
+Homepage = "https://github.com/GuptaAman12/churnguard"
+Documentation = "https://github.com/GuptaAman12/churnguard#readme"
 
 [build-system]
 requires = ["hatchling"]

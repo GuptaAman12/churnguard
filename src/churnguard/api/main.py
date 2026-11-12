@@ -142,7 +142,7 @@ def create_app(
         ),
         version=settings.api_version,
         lifespan=lifespan,
-        contact={"name": "ChurnGuard", "url": "https://github.com/your-org/churnguard"},
+        contact={"name": "ChurnGuard", "url": "https://github.com/GuptaAman12/churnguard"},
         license_info={"name": "MIT"},
     )
     app.state.settings = settings

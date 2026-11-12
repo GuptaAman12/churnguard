@@ -9,7 +9,9 @@ Pandera, Evidently, FastAPI, Prometheus/Grafana, Docker Compose, Kubernetes
 (Helm) and Terraform.
 
 <p>
-  <img alt="CI" src="https://github.com/your-org/churnguard/actions/workflows/ci.yml/badge.svg" />
+  <a href="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml/badge.svg" />
+  </a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.12-blue" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
