@@ -73,6 +73,32 @@ log loss dropped 13.5% and calibration error fell 8×.
 > a calibration report. The table above is a snapshot — see `models/model.json`
 > for the latest artifact metadata.
 
+## Screenshots
+
+Captured from the local Compose stack, with the API serving champion v3 and a
+simulated drift batch pushed through the monitoring flow.
+
+**Monitoring** — drift share, latency percentiles, prediction mix, risk tiers and
+the active champion, all scraped from the API.
+
+![Grafana dashboard](docs/screenshots/grafana.png)
+
+**Model registry** — three versions and an audit trail: each version carries
+`git_sha`, `data_fingerprint`, `decision_threshold`, `calibration_method` and the
+promotion reason. Only the champion receives traffic.
+
+![MLflow model registry](docs/screenshots/mlflow-registry.png)
+
+**Experiment tracking** — calibration metrics logged next to discrimination
+metrics, with dataset lineage attached to the run.
+
+![MLflow run](docs/screenshots/mlflow-run.png)
+
+**Inference API** — typed contracts, batch scoring, TreeSHAP explanations and the
+drift summary in one OpenAPI surface.
+
+![FastAPI documentation](docs/screenshots/api-docs.png)
+
 ## Architecture
 
 ```mermaid
