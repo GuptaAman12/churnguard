@@ -78,6 +78,11 @@ log loss dropped 13.5% and calibration error fell 8×.
 Captured from the local Compose stack, with the API serving champion v3 and a
 simulated drift batch pushed through the monitoring flow.
 
+**Live demo** — a 10-second replay of real API calls: champion lookup, a churn
+prediction, its TreeSHAP drivers, and the drift summary.
+
+![ChurnGuard demo](docs/screenshots/demo.gif)
+
 **Monitoring** — drift share, latency percentiles, prediction mix, risk tiers and
 the active champion, all scraped from the API.
 
