@@ -34,7 +34,7 @@ jobs:
           - target: mlflow
             image: churnguard-mlflow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # GHCR requires lowercase repository names; GitHub owners may have caps.
       - name: Lowercase image prefix
@@ -51,7 +51,7 @@ jobs:
 
       - name: Compute image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
           tags: |
@@ -61,7 +61,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build & push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.target }}
@@ -85,10 +85,10 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'prod' }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -132,7 +132,7 @@ jobs:
       - name: Smoke test the ALB endpoint
         run: |
           URL=$(terraform -chdir=infra/terraform output -raw alb_dns_name)
-          for attempt in $(seq 1 10); do
+          for _ in $(seq 1 10); do
             if curl -fsS "http://${URL}/health"; then
               echo "API is healthy"
               exit 0

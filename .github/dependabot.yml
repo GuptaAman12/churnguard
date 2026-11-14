@@ -21,6 +21,10 @@ updates:
           - "mypy*"
           - "pytest*"
           - "pre-commit*"
+    # Evidently 0.7 constrains pandas<3; remove once it declares support.
+    ignore:
+      - dependency-name: "pandas"
+        versions: [">=3"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -33,3 +37,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+    # The ML stack does not publish wheels for every new Python release.
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
