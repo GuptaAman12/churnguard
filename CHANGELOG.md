@@ -4,6 +4,30 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- k6 load-test harness (`loadtest/k6/churnguard.js`) with open-loop arrival-rate
+  scenarios for `/predict` and `/explain`, response-contract checks and latency
+  thresholds; `make loadtest` runs it against the local stack.
+- `docs/benchmarks.md`: latency percentiles, capacity curve, single-request
+  profile and the defects the measurements exposed.
+
+### Changed
+
+- Prediction logging is asynchronous: a bounded queue feeds one writer thread
+  that appends in batches and rotates on size. The request path no longer pays
+  filesystem latency (8.2 ms per append on a Windows bind mount) or contends on
+  a global lock. Records are dropped and counted under back-pressure instead of
+  blocking the API.
+
+### Fixed
+
+- Model hot-reload no longer blocks inference. `ModelService.load()` used to hold
+  the lock the prediction path reads under for the whole duration of a registry
+  download, so promoting a champion stalled every in-flight request.
+
 ## [0.2.1] - 2026-11-14
 
 ### Fixed
@@ -83,6 +107,7 @@ Initial production-grade platform.
   infra validation), release publishing to GHCR and opt-in ECS deployment.
 - Architecture notes, ADRs, runbook and a generated model card.
 
+[Unreleased]: https://github.com/GuptaAman12/churnguard/compare/v0.2.1...HEAD
 [0.2.1]: https://github.com/GuptaAman12/churnguard/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/GuptaAman12/churnguard/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/GuptaAman12/churnguard/releases/tag/v0.1.0

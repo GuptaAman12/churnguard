@@ -134,6 +134,7 @@ def create_app(
                 task.cancel()
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
+            prediction_logger.close()
 
     app = FastAPI(
         title="ChurnGuard Prediction API",

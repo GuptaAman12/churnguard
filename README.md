@@ -125,6 +125,7 @@ flowchart LR
 Full design notes: [`docs/architecture.md`](docs/architecture.md) ·
 ADRs: [`docs/adr/`](docs/adr/) · Runbook: [`docs/runbook.md`](docs/runbook.md) ·
 Model card: [`docs/model-card.md`](docs/model-card.md) ·
+Benchmarks: [`docs/benchmarks.md`](docs/benchmarks.md) ·
 Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Quickstart (5 minutes, no Docker)
@@ -271,7 +272,19 @@ PostgreSQL instance.
   joblib fallback + metadata sidecar as a circuit breaker.
 - Prometheus metrics: request count/latency, prediction distribution, model
   metadata gauge, drift gauges.
-- Prediction logging (rotating JSONL) that doubles as the online drift source.
+- Prediction logging (rotating JSONL) that doubles as the online drift source,
+  written by a background thread from a bounded queue so disk latency never
+  enters the request path.
+
+### Performance & load testing
+
+- `loadtest/k6/` — open-loop k6 scenarios for `/predict` and `/explain` with
+  contract checks and regression thresholds; `make loadtest` runs them against
+  the local stack and writes a JSON summary to `reports/loadtest/`.
+- Measured on the Compose stack: `/predict` p50 **15.8 ms**, p95 **37.5 ms** at
+  25 rps with `0.000%` errors, saturating at **~70 rps per uvicorn worker**
+  (four workers: ~170 rps). Profile, capacity curve and the two defects the
+  load test exposed: [docs/benchmarks.md](docs/benchmarks.md).
 
 ### Monitoring & orchestration
 
@@ -307,7 +320,7 @@ uv run pytest                      # 76 tests, coverage gate
 uv run pre-commit run --all-files
 ```
 
-Current state: **88 tests passing**, **~83% branch coverage**, `ruff` clean,
+Current state: **93 tests passing**, **~84% branch coverage**, `ruff` clean,
 `mypy --strict` clean across 32 source modules.
 
 ## Project layout
@@ -326,6 +339,7 @@ Current state: **88 tests passing**, **~83% branch coverage**, `ruff` clean,
 │   ├── cli.py          # unified CLI
 │   └── ...
 ├── tests/              # unit + integration tests
+├── loadtest/           # k6 scenarios + how to read them
 ├── configs/            # Prometheus rules, Grafana provisioning + dashboard
 ├── infra/
 │   ├── helm/churnguard/
