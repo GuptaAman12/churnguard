@@ -149,7 +149,7 @@ jobs:
         run: helm template churnguard infra/helm/churnguard --namespace churnguard > /dev/null
 
       - name: Terraform fmt & validate
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.9.8"
       - run: terraform -chdir=infra/terraform fmt -check -recursive
