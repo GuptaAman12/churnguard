@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-11-14
+
+### Fixed
+
+- `churnguard --version` reports the installed package version instead of a
+  hardcoded `0.1.0` string.
+
 ## [0.2.0] - 2026-11-14
 
 Calibrated, explainable scoring.
@@ -76,5 +83,6 @@ Initial production-grade platform.
   infra validation), release publishing to GHCR and opt-in ECS deployment.
 - Architecture notes, ADRs, runbook and a generated model card.
 
+[0.2.1]: https://github.com/GuptaAman12/churnguard/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/GuptaAman12/churnguard/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/GuptaAman12/churnguard/releases/tag/v0.1.0

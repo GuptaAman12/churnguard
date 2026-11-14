@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from churnguard import __version__
 from churnguard.config import Settings, get_settings
 from churnguard.logging import configure_logging, get_logger
 
@@ -21,7 +22,7 @@ def _parser() -> argparse.ArgumentParser:
         description="ChurnGuard MLOps platform CLI",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--version", action="version", version="churnguard 0.1.0")
+    parser.add_argument("--version", action="version", version=f"churnguard {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     ingest = sub.add_parser("ingest", help="Download the raw dataset (with synthetic fallback)")
