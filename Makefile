@@ -6,9 +6,11 @@ SHELL := /bin/bash
 
 PY := uv run
 COMPOSE := docker compose
+LOADTEST_IMAGE ?= grafana/k6:2.4.0
+LOADTEST_RATE ?= 25
 
 .PHONY: help install data pipeline train serve drift batch test lint format typecheck check \
-        security infra smoke docker-build docker-up docker-down docker-logs mlflow clean
+        security infra smoke loadtest docker-build docker-up docker-down docker-logs mlflow clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -77,6 +79,15 @@ smoke: ## Probe a running local stack
 	curl -fsS http://127.0.0.1:5000/health
 	curl -fsS http://127.0.0.1:9090/-/healthy
 	curl -fsS http://127.0.0.1:3000/api/health
+
+loadtest: ## Load test the running API with k6 (LOADTEST_RATE=25)
+	docker run --rm --network churnguard_default \
+	  -e BASE_URL=http://api:8000 \
+	  -e PREDICT_RATE=$(LOADTEST_RATE) \
+	  -e SUMMARY_PATH=/reports/summary.json \
+	  -v "$(CURDIR)/loadtest:/scripts:ro" \
+	  -v "$(CURDIR)/reports/loadtest:/reports" \
+	  $(LOADTEST_IMAGE) run /scripts/k6/churnguard.js
 
 docker-build: ## Build all container images
 	$(COMPOSE) build

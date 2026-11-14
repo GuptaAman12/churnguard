@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from types import SimpleNamespace
 
 import joblib
@@ -58,6 +59,48 @@ def test_refresh_is_noop_without_registry(settings, trained_pipeline) -> None:
     service = ModelService(settings)
     service.load()
     assert service.refresh_if_changed() is False
+
+
+def test_reload_does_not_block_inference(
+    settings, trained_pipeline, split_frames, monkeypatch
+) -> None:
+    """A slow champion reload must never queue predictions behind it."""
+    _write_fallback(settings, trained_pipeline)
+    service = ModelService(settings)
+    service.load()
+
+    in_reload = threading.Event()
+    release = threading.Event()
+    fallback = service._from_fallback
+
+    def slow_fallback():
+        in_reload.set()
+        assert release.wait(timeout=10), "reload was never released"
+        return fallback()
+
+    monkeypatch.setattr(service, "_from_registry", lambda: None)
+    monkeypatch.setattr(service, "_from_fallback", slow_fallback)
+
+    reload_thread = threading.Thread(target=service.load)
+    reload_thread.start()
+    assert in_reload.wait(timeout=10), "reload never started"
+
+    features = split_frames[1].drop(columns=["Churn"]).head(5)
+    results: list[int] = []
+
+    def score() -> None:
+        results.append(service.predict_proba(features).shape[0])
+
+    predict_thread = threading.Thread(target=score)
+    predict_thread.start()
+    predict_thread.join(timeout=5)
+    blocked = predict_thread.is_alive()
+
+    release.set()
+    reload_thread.join(timeout=10)
+
+    assert not blocked, "prediction blocked while the model was reloading"
+    assert results == [5]
 
 
 def _fake_champion(version: str) -> SimpleNamespace:

@@ -52,6 +52,7 @@ def test_single_prediction_contract(client, customer_payload, settings) -> None:
     assert body["model"]["source"] == "injected"
     assert response.headers["X-Request-ID"]
 
+    assert client.app.state.prediction_logger.flush()
     log_lines = settings.prediction_log_path.read_text(encoding="utf-8").splitlines()
     assert len(log_lines) == 1
     record = json.loads(log_lines[0])

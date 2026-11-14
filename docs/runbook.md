@@ -111,6 +111,23 @@ docker compose exec prefect-worker python -c \
   genuinely ships no stubs.
 - Prefer narrowing (`assert x is not None`) over `# type: ignore`.
 
+## Scenario: latency regression or a suspected capacity problem
+
+```bash
+make loadtest                          # 25 rps /predict + 3 rps /explain
+make loadtest LOADTEST_RATE=60         # push towards the measured knee
+```
+
+Read the summary k6 prints (it also lands in `reports/loadtest/summary.json`).
+Compare against [benchmarks.md](benchmarks.md):
+
+- p50 flat but p95/p99 rising → a periodic stall. Check whether the champion
+  alias moved (a reload used to block inference), GC, or the prediction-log disk.
+- throughput flat and p50 climbing → the worker is saturated; add replicas
+  (HPA scales on CPU) rather than raising the arrival rate.
+- error rate above 0% → look at `churnguard_http_requests_total` by status in
+  Grafana before blaming the load.
+
 ## SLOs and alerts
 
 | Alert | Expression | Threshold | Action |
