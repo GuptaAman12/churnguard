@@ -12,6 +12,9 @@ Pandera, Evidently, FastAPI, Prometheus/Grafana, Docker Compose, Kubernetes
   <a href="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml">
     <img alt="CI" src="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml/badge.svg" />
   </a>
+  <a href="https://github.com/GuptaAman12/churnguard/releases/latest">
+    <img alt="release" src="https://img.shields.io/github/v/release/GuptaAman12/churnguard" />
+  </a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.12-blue" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-green" />
 </p>
@@ -90,7 +93,8 @@ flowchart LR
 
 Full design notes: [`docs/architecture.md`](docs/architecture.md) ·
 ADRs: [`docs/adr/`](docs/adr/) · Runbook: [`docs/runbook.md`](docs/runbook.md) ·
-Model card: [`docs/model-card.md`](docs/model-card.md)
+Model card: [`docs/model-card.md`](docs/model-card.md) ·
+Changelog: [`CHANGELOG.md`](CHANGELOG.md)
 
 ## Quickstart (5 minutes, no Docker)
 
