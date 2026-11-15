@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-11-15
+
+### Fixed
+
+- Helm chart now pulls from the path the release workflow actually publishes to
+  (`ghcr.io/<owner>/<repo>/churnguard-api`). The old default
+  (`ghcr.io/<owner>/churnguard-api`) is not a valid GHCR package name for a
+  repo-scoped image, so a fresh `helm install` failed with `manifest unknown`.
+  A test now pins the chart repository and tag to the release workflow and
+  package version.
+
 ## [0.3.0] - 2026-11-15
 
 Load-tested, rate-limited, and hardened for a real cluster.
@@ -120,7 +131,8 @@ Initial production-grade platform.
   infra validation), release publishing to GHCR and opt-in ECS deployment.
 - Architecture notes, ADRs, runbook and a generated model card.
 
-[Unreleased]: https://github.com/GuptaAman12/churnguard/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/GuptaAman12/churnguard/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/GuptaAman12/churnguard/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/GuptaAman12/churnguard/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/GuptaAman12/churnguard/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/GuptaAman12/churnguard/compare/v0.1.0...v0.2.0
