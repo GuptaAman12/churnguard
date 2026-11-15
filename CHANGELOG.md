@@ -13,9 +13,20 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   thresholds; `make loadtest` runs it against the local stack.
 - `docs/benchmarks.md`: latency percentiles, capacity curve, single-request
   profile and the defects the measurements exposed.
+- Per-client rate limiting (`429` with `Retry-After`) and a streaming
+  request-body cap (`413`), configurable via `CHURNGUARD_RATE_LIMIT_PER_MINUTE`,
+  `CHURNGUARD_RATE_LIMIT_BURST` and `CHURNGUARD_MAX_REQUEST_BYTES`; probes and
+  `/metrics` are exempt.
+- Helm chart hardening: `NetworkPolicy` (ingress + DNS/egress allow-list),
+  read-only root filesystem with `emptyDir` scratch mounts, `uid/gid 10001`,
+  `ephemeral-storage` requests/limits and preferred pod anti-affinity.
+- CI now validates the rendered chart with `kubeconform -strict` (schema) and
+  `kube-score` (security/best-practice scoring), both pinned.
 
 ### Changed
 
+- Helm chart sets `image.pullPolicy: Always` and defaults to a non-root
+  `uid/gid 10001`, matching a read-only root filesystem.
 - Prediction logging is asynchronous: a bounded queue feeds one writer thread
   that appends in batches and rotates on size. The request path no longer pays
   filesystem latency (8.2 ms per append on a Windows bind mount) or contends on

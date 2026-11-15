@@ -270,6 +270,9 @@ PostgreSQL instance.
   JSON logs.
 - `model_loader.py` — registry-first loading with hot-reload polling and a
   joblib fallback + metadata sidecar as a circuit breaker.
+- In-process per-IP token-bucket rate limiting (`429` + `Retry-After`) and a
+  streaming body-size cap (`413`), both configurable and disabled for probes.
+  Limits are per pod by design; a cluster-wide quota belongs at the gateway.
 - Prometheus metrics: request count/latency, prediction distribution, model
   metadata gauge, drift gauges.
 - Prediction logging (rotating JSONL) that doubles as the online drift source,
@@ -304,11 +307,14 @@ PostgreSQL instance.
 - `docker-compose.yml` — Postgres, MLflow, API, Prefect server + worker,
   Pushgateway, Prometheus, Grafana.
 - Helm chart — Deployment, Service, HPA, PDB, probes, ServiceMonitor, secrets,
-  topology spread.
+  NetworkPolicy, read-only root filesystem with scratch `emptyDir` mounts,
+  non-root `uid/gid 10001` and pod anti-affinity; rendered manifests are scored
+  with `kube-score` and schema-checked with `kubeconform` in CI.
 - Terraform — VPC, ECR, RDS Postgres, S3, Secrets Manager, ECS Fargate for API
   and MLflow, ALB with optional HTTPS, Cloud Map service discovery.
 - GitHub Actions — lint, strict mypy, tests + coverage, pip-audit, Trivy,
-  Docker builds, infra validation, tag-based release with SBOM/provenance.
+  Docker builds, infra validation (Terraform, `helm lint`, `kubeconform`,
+  `kube-score`, `actionlint`), tag-based release with SBOM/provenance.
 
 ## Quality gates
 
@@ -380,6 +386,9 @@ for the full surface. Key knobs:
 | `CHURNGUARD_DRIFT_SHARE_THRESHOLD` | `0.30` | Dataset-drift alert threshold |
 | `CHURNGUARD_MODEL_REFRESH_SECONDS` | `60` | Champion hot-reload interval |
 | `CHURNGUARD_PUSHGATEWAY_URL` | unset | Batch drift metric export |
+| `CHURNGUARD_RATE_LIMIT_PER_MINUTE` | `6000` | Sustained requests/minute per client IP; `0` disables |
+| `CHURNGUARD_RATE_LIMIT_BURST` | `600` | Token-bucket capacity (largest allowed spike) |
+| `CHURNGUARD_MAX_REQUEST_BYTES` | `512000` | Largest accepted body; larger gets `413` |
 
 ## Design trade-offs
 

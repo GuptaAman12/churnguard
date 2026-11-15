@@ -3,7 +3,7 @@ replicaCount: 2
 image:
   repository: ghcr.io/guptaaman12/churnguard-api
   tag: "0.2.1"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 imagePullSecrets: []
 nameOverride: ""
@@ -20,18 +20,28 @@ podLabels: {}
 
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  # The image ships no fixed uid, so anything above 10000 avoids colliding with
+  # host users. Writable paths are the emptyDir mounts declared below.
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
   seccompProfile:
     type: RuntimeDefault
 
 securityContext:
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
       - ALL
+
+# The API writes prediction logs and needs a scratch dir; everything else in the
+# image is read-only.
+writablePaths:
+  - name: logs
+    mountPath: /app/logs
+  - name: tmp
+    mountPath: /tmp
 
 service:
   type: ClusterIP
@@ -53,9 +63,11 @@ resources:
   requests:
     cpu: 250m
     memory: 512Mi
+    ephemeral-storage: 256Mi
   limits:
     cpu: "1"
     memory: 1Gi
+    ephemeral-storage: 1Gi
 
 autoscaling:
   enabled: true
@@ -128,4 +140,33 @@ topologySpreadConstraints:
 
 nodeSelector: {}
 tolerations: []
-affinity: {}
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: churnguard
+
+networkPolicy:
+  enabled: true
+  # No `from` clause: any ingress controller, load balancer or scraper may reach
+  # the API port. Narrow this with namespace/pod selectors in your own values.
+  ingress:
+    - ports:
+        - port: http
+          protocol: TCP
+  # DNS everywhere, plus the tracking server and Pushgateway the API talks to.
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - ports:
+        - port: 5000
+          protocol: TCP
+        - port: 9091
+          protocol: TCP

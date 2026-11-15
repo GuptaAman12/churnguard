@@ -128,6 +128,28 @@ Compare against [benchmarks.md](benchmarks.md):
 - error rate above 0% → look at `churnguard_http_requests_total` by status in
   Grafana before blaming the load.
 
+## Scenario: clients see 429 or 413
+
+Both come from in-process middleware in the API pod, not from the ingress.
+
+- **429** — a client exceeded its token bucket for the source IP. The response
+  carries `Retry-After` (seconds) and the body repeats `limit_per_minute`.
+  Check `churnguard_http_requests_total{status="429"}`; if it is one caller,
+  they need to back off or get a bigger budget. If it is everything, a broken
+  client is retrying in a tight loop, or the limit was lowered too far.
+  Raise `CHURNGUARD_RATE_LIMIT_PER_MINUTE` / `CHURNGUARD_RATE_LIMIT_BURST`
+  (defaults `6000` / `600`, i.e. 100 rps sustained with a 600-request spike).
+- **413** — the body exceeded `CHURNGUARD_MAX_REQUEST_BYTES` (default 512 KB).
+  Batch callers should split into chunks of ≤ 1,000 rows; a single customer
+  record is ~1 KB, so a 413 almost always means a malformed or runaway client.
+  The limit is enforced on `Content-Length` *and* while the body streams, so
+  chunked uploads cannot bypass it.
+
+Rate budgets are **per pod**: behind the ALB each replica has its own bucket, so
+aggregate throughput scales with replica count. The `/health`, `/ready`,
+`/metrics` and `/` paths are exempt, so probes and scrapers never consume a
+client's budget.
+
 ## SLOs and alerts
 
 | Alert | Expression | Threshold | Action |

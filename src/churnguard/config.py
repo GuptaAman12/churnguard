@@ -34,6 +34,20 @@ class Settings(BaseSettings):
     log_json: bool = True
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
+    # --- serving limits ---------------------------------------------------
+    rate_limit_per_minute: int = Field(
+        default=6000,
+        description="Sustained requests per minute per client IP; 0 disables limiting.",
+    )
+    rate_limit_burst: int = Field(
+        default=600,
+        description="Bucket capacity, i.e. how large a short spike a client may send.",
+    )
+    max_request_bytes: int = Field(
+        default=512_000,
+        description="Largest accepted request body; batch payloads above this get a 413.",
+    )
+
     # --- paths -------------------------------------------------------------
     data_dir: Path = PROJECT_ROOT / "data"
     raw_data_path: Path = PROJECT_ROOT / "data" / "raw" / "telco_churn.csv"
