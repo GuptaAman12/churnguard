@@ -48,7 +48,11 @@ class ModelService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._bundle: ModelBundle | None = None
+        # Guards the bundle reference: held only for attribute reads and swaps.
         self._lock = threading.RLock()
+        # Serialises expensive loads so concurrent refreshes cannot duplicate a
+        # registry download. Never held by the prediction path.
+        self._reload_lock = threading.Lock()
         settings.ensure_directories()
         mlflow.set_tracking_uri(settings.tracking_uri)
         try:
@@ -63,14 +67,19 @@ class ModelService:
 
     def load(self) -> ModelBundle:
         """Load the champion model, falling back to the local joblib artifact."""
-        with self._lock:
+        # Resolving a registry bundle downloads the artifact from the tracking
+        # server and can take hundreds of milliseconds. Do that outside the lock
+        # the prediction path shares, otherwise every in-flight request stalls
+        # behind each poll of the ``champion`` alias.
+        with self._reload_lock:
             bundle = self._from_registry() or self._from_fallback()
             if bundle is None:
                 metrics.record_model_unloaded()
                 raise ModelNotAvailableError(
                     "No model available in the MLflow registry or local fallback path"
                 )
-            self._bundle = bundle
+            with self._lock:
+                self._bundle = bundle
             metrics.record_model_loaded(
                 name=bundle.name,
                 version=bundle.version,
