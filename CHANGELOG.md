@@ -37,6 +37,12 @@ Load-tested, rate-limited, and hardened for a real cluster.
 
 ### Fixed
 
+- Helm chart now pulls from the path the release workflow actually publishes to
+  (`ghcr.io/<owner>/<repo>/churnguard-api`). The old default
+  (`ghcr.io/<owner>/churnguard-api`) is not a valid GHCR package name for a
+  repo-scoped image, so a fresh `helm install` failed with `manifest unknown`.
+  A test now pins the chart repository and tag to the release workflow and
+  package version.
 - Model hot-reload no longer blocks inference. `ModelService.load()` used to hold
   the lock the prediction path reads under for the whole duration of a registry
   download, so promoting a champion stalled every in-flight request.

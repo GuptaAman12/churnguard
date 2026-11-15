@@ -1,7 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/guptaaman12/churnguard-api
+  # GitHub publishes container packages under the repository path, so the image
+  # is ghcr.io/<owner>/<repo>/<image> - not ghcr.io/<owner>/<image>.
+  repository: ghcr.io/guptaaman12/churnguard/churnguard-api
   tag: "0.3.0"
   pullPolicy: Always
 
