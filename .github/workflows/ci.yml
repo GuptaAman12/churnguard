@@ -58,13 +58,6 @@ jobs:
             junit.xml
           retention-days: 7
 
-      - name: Upload coverage to Codecov
-        if: github.event_name == 'push'
-        uses: codecov/codecov-action@v7
-        with:
-          files: coverage.xml
-          fail_ci_if_error: false
-
   security:
     name: Security scan
     runs-on: ubuntu-latest
