@@ -19,6 +19,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.concurrency import run_in_threadpool
 
 from churnguard.api import metrics
+from churnguard.api.limits import BodySizeLimitMiddleware, RateLimitMiddleware, TokenBucketLimiter
 from churnguard.api.model_loader import ModelNotAvailableError, ModelService
 from churnguard.api.prediction_log import PredictionLogger
 from churnguard.api.schemas import (
@@ -151,6 +152,18 @@ def create_app(
     app.state.settings = settings
     app.state.model_service = service
     app.state.prediction_logger = prediction_logger
+
+    # Middleware is applied innermost-first as it is registered here, so the
+    # resulting order is: logging/metrics -> CORS -> rate limit -> body size.
+    # That keeps 429s visible in the metrics and lets CORS answer preflights
+    # without spending a client's request budget.
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    if settings.rate_limit_per_minute > 0:
+        limiter = TokenBucketLimiter(
+            settings.rate_limit_per_minute, burst=settings.rate_limit_burst
+        )
+        app.state.rate_limiter = limiter
+        app.add_middleware(RateLimitMiddleware, limiter=limiter)
 
     app.add_middleware(
         CORSMiddleware,

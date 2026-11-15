@@ -32,6 +32,21 @@ docker run --rm --network churnguard_default \
 Against a remote deployment, drop the `--network` flag and point `BASE_URL` at
 it; add `-e API_KEY=...` when the API requires `X-API-Key`.
 
+## Rate limits
+
+The API rate-limits per client IP (`CHURNGUARD_RATE_LIMIT_PER_MINUTE`, default
+6000 = 100 rps, burst 600). k6 runs as one container, so from the API's point of
+view the whole load test is a single client: sweeps above ~100 rps will start
+returning `429` and the run will look like an error-rate failure. For capacity
+sweeps, raise the budget on the API container first:
+
+```bash
+CHURNGUARD_RATE_LIMIT_PER_MINUTE=0 docker compose up -d --force-recreate api
+```
+
+`0` disables limiting. This is the correct trade for a benchmark: you want to
+measure where the service saturates, not where its guard rail trips.
+
 ## What it checks
 
 - `/predict` returns 200, a probability in `[0, 1]` and a model version
