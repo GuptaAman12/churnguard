@@ -57,3 +57,5 @@ override.tf.json
 
 # Notebooks
 .ipynb_checkpoints/
+
+/RUN-FROM-SCRATCH.md
