@@ -8,7 +8,6 @@ implementation, but the workflow below is the same one used in production teams.
 ```bash
 uv sync --all-groups
 uv run pre-commit install
-uv run dvc repro
 ```
 
 ## Before opening a PR
@@ -21,7 +20,7 @@ uv run pytest
 ```
 
 All four must pass. CI runs the same commands plus Docker builds, Terraform
-validation, Helm linting and a security scan.
+validation and a security scan.
 
 ## Conventions
 

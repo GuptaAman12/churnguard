@@ -13,7 +13,7 @@ flowchart LR
 
     subgraph DataPlatform["Data platform"]
         B[ingest<br/>validate · checksum]
-        C[(DVC tracked<br/>raw / processed / reference)]
+        C[(Local files<br/>raw / processed / reference)]
     end
 
     subgraph Experimentation
@@ -39,7 +39,7 @@ flowchart LR
         N[Prefect flows<br/>train · monitor]
         O[Evidently drift<br/>PSI / KS / JS]
         P[Grafana + Alertmanager]
-        Q[Terraform · Helm · GH Actions]
+        Q[Terraform · GH Actions]
     end
 
     A --> B
@@ -64,11 +64,11 @@ flowchart LR
 | Stage | Command | Input | Output | Gate |
 |---|---|---|---|---|
 | Ingest | `churnguard ingest` | remote CSV | `data/raw/telco_churn.csv` | Pandera raw schema; size sanity check |
-| Split | `churnguard split` / `dvc repro` | raw CSV | processed train/test + reference Parquet | Processed schema; stratified split |
+| Split | `churnguard split` | raw CSV | processed train/test + reference Parquet | Processed schema; stratified split |
 | Tune | `churnguard train` | train Parquet | Optuna study | 5-fold stratified CV ROC-AUC |
 | Train | `churnguard train` | train Parquet | MLflow run + registry version | Signature inference, model card |
 | Promote | automatic | registry version | `champion` alias | AUC ≥ floor **and** no regression > tolerance |
-| Serve | `churnguard serve` | registry / fallback | HTTP predictions | `/ready` requires a loaded model |
+| Serve | `churnguard serve` | registry / fallback | HTTP predictions | `/ready` reports whether a model is loaded |
 | Monitor | `churnguard drift` | reference vs current | JSON + HTML + metrics | Drift share ≥ 30% raises an alert |
 | Orchestrate | Prefect flows | params | deployment runs | Retries + timeouts per task |
 

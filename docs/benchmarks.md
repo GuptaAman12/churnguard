@@ -81,7 +81,7 @@ the pandas pipeline do not, so extra in-process concurrency only adds overhead.
 Scaling out is therefore horizontal. Four workers behind the same container
 saturate at ~170–180 rps on this host (~2.7×, not 4×, because 12 vCPUs are shared
 with MLflow, Postgres, Prometheus, Grafana, k6 itself and the Windows host).
-The Helm chart sets replicas and an HPA on CPU for exactly this reason; the
+The deployment targets run multiple replicas/tasks for exactly this reason; the
 Compose file stays at one worker to keep the laptop footprint small.
 
 ## Two defects the benchmarks exposed
