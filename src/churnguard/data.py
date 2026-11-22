@@ -127,7 +127,7 @@ def prepare_datasets(
     test_size: float = 0.2,
     random_state: int = 42,
 ) -> dict[str, object]:
-    """Clean, split, persist datasets and write manifests. Used by DVC + Prefect."""
+    """Clean, split, persist datasets and write manifests. Used by the CLI and Prefect."""
     raw = read_dataset(raw_path)
     cleaned = clean_data(raw)
     train, test = split_data(cleaned, test_size=test_size, random_state=random_state)

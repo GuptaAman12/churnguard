@@ -9,7 +9,7 @@ COMPOSE := docker compose
 LOADTEST_IMAGE ?= grafana/k6:2.4.0
 LOADTEST_RATE ?= 25
 
-.PHONY: help install data pipeline train serve drift batch test lint format typecheck check \
+.PHONY: help install pipeline train serve drift batch test lint format typecheck check \
         security infra smoke loadtest docker-build docker-up docker-down docker-logs mlflow clean
 
 help: ## Show available targets
@@ -20,11 +20,7 @@ install: ## Create the uv environment and install all dependency groups
 	uv sync --all-groups
 	uv run pre-commit install
 
-data: ## Download + validate + split the dataset (DVC pipeline)
-	uv run dvc repro
-
 pipeline: ## Run the full Prefect training pipeline locally
-	$(PY) python -m prefect.flows 2>/dev/null || true
 	$(PY) python -c "from churnguard.flows.training import training_pipeline; training_pipeline(n_trials=10)"
 
 bootstrap: ## Ingest → split → train → score → drift in one command
@@ -62,15 +58,13 @@ check: lint typecheck test ## Full local quality gate
 
 security: ## Audit locked dependencies for known CVEs
 	uv export --format requirements-txt --no-hashes --all-groups > requirements.txt
-	uv tool run pip-audit -r requirements.txt --strict || true
+	uv tool run pip-audit -r requirements.txt --strict
 	rm -f requirements.txt
 
-infra: ## Validate Terraform and Helm locally
+infra: ## Validate Terraform locally
 	terraform -chdir=infra/terraform fmt -check -recursive
 	terraform -chdir=infra/terraform init -backend=false -input=false
 	terraform -chdir=infra/terraform validate -no-color
-	helm lint infra/helm/churnguard
-	helm template churnguard infra/helm/churnguard --namespace churnguard > /dev/null
 
 smoke: ## Probe a running local stack
 	curl -fsS http://127.0.0.1:8000/health

@@ -1,4 +1,4 @@
-"""Prefect flow: scheduled drift monitoring with optional auto-retraining."""
+"""Prefect flow: scheduled drift monitoring."""
 
 from __future__ import annotations
 
