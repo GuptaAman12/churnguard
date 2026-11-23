@@ -13,7 +13,7 @@ def main() -> None:
         training_pipeline.to_deployment(  # type: ignore[arg-type]
             name="daily-training",
             cron="0 2 * * *",
-            parameters={"n_trials": 10, "register": True, "run_drift": True},
+            parameters={"n_trials": 10, "register": True, "run_drift": False},
             description="Nightly retraining with gated champion promotion.",
             tags=["training", "production"],
         ),

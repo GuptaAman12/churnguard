@@ -5,8 +5,7 @@ Data validation → experiment tracking → model registry with gated promotion 
 containerised inference with hot-reload → drift monitoring → infrastructure as code.
 
 Built with Python 3.12, `uv`, scikit-learn/XGBoost, MLflow, Optuna, Prefect,
-Pandera, Evidently, FastAPI, Prometheus/Grafana, Docker Compose, Kubernetes
-(Helm) and Terraform.
+Pandera, FastAPI, Prometheus/Grafana, Docker Compose and Terraform.
 
 <p>
   <a href="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml">
@@ -29,12 +28,12 @@ actually breaks in production: **the seams**.
 | Seam | Failure mode | What ChurnGuard does |
 |---|---|---|
 | Notebook → service | Training/serving skew | Feature engineering is embedded *inside* the serialized sklearn pipeline |
-| Data → training | Silent schema corruption | Pandera contract gate in the DVC stage; manifests with content fingerprints |
+| Data → training | Silent schema corruption | Pandera contract gate before training; manifests with content fingerprints |
 | Training → production | Unreviewed model swaps | MLflow registry + `champion` alias + quality/regression gates with audit tags |
 | Production → operator | "It's down and we don't know why" | `/health`, `/ready`, `/model/info`, Prometheus metrics, Grafana dashboard, alert rules |
-| Model → reality | Concept/data drift | Evidently drift reports, per-feature p-values, Prometheus export, retraining flow |
+| Model → reality | Concept/data drift | KS / chi-square drift reports, per-feature p-values, Prometheus export, retraining flow |
 | Model → human | "Why did it predict that?" | Exact TreeSHAP contributions at `/explain`, plus calibrated probabilities |
-| Local → cloud | Snowflake environments | One container image, 12-factor config, Compose for dev, Terraform/ECS + Helm for prod |
+| Local → cloud | Snowflake environments | One container image, 12-factor config, Compose for dev, Terraform/ECS for prod |
 
 ## Results
 
@@ -109,7 +108,7 @@ drift summary in one OpenAPI surface.
 ```mermaid
 flowchart LR
     A[Telco CSV] --> B[Ingest + Pandera gate]
-    B --> C[(DVC: raw / processed / reference)]
+    B --> C[(Local parquet: raw / processed / reference)]
     C --> D[Optuna TPE tuning]
     D --> E[XGBoost pipeline]
     E --> F[Calibration + evaluation<br/>model card]
@@ -117,7 +116,7 @@ flowchart LR
     E --> H[(MLflow registry)]
     H -->|champion alias| I[FastAPI /predict<br/>/explain]
     I --> J[Prometheus / Grafana]
-    K[Evidently drift] --> J
+    K[Statistical drift] --> J
     L[Prefect flows] --> D
     L --> K
 ```
@@ -135,8 +134,8 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
 ```bash
 uv sync --all-groups
 
-# 1. Download, validate and split the dataset (DVC pipeline)
-uv run dvc repro
+# 1. Download, validate and split the dataset
+uv run python -m churnguard.cli split
 
 # 2. Train + tune + register a champion
 uv run python -m churnguard.cli train --n-trials 10
@@ -243,8 +242,6 @@ PostgreSQL instance.
   with structured failure cases.
 - `data.py` — cleaning, stratified split, SHA-256 content fingerprints, dataset
   manifests written next to every artifact.
-- `dvc.yaml` / `dvc.lock` — reproducible ingest → split pipeline; artifacts
-  pushed to a configurable remote.
 
 ### Training & registry
 
@@ -284,16 +281,15 @@ PostgreSQL instance.
 - `loadtest/k6/` — open-loop k6 scenarios for `/predict` and `/explain` with
   contract checks and regression thresholds; `make loadtest` runs them against
   the local stack and writes a JSON summary to `reports/loadtest/`.
-- Measured on the Compose stack: `/predict` p50 **15.8 ms**, p95 **37.5 ms** at
+- Measured on the Compose stack: `/predict` p50 **14.7 ms**, p95 **34.8 ms** at
   25 rps with `0.000%` errors, saturating at **~70 rps per uvicorn worker**
   (four workers: ~170 rps). Profile, capacity curve and the two defects the
   load test exposed: [docs/benchmarks.md](docs/benchmarks.md).
 
 ### Monitoring & orchestration
 
-- `monitoring/drift.py` — Evidently 0.7 per-column tests, HTML + JSON artifacts,
-  history snapshots, Pushgateway export, and a statistical fallback that keeps
-  working if Evidently breaks.
+- `monitoring/drift.py` — per-column KS / chi-square tests, HTML + JSON
+  artifacts, history snapshots and Pushgateway export.
 - `monitoring/simulate.py` — realistic production-shift generator (pricing,
   tenure, contract mix, product mix) for demos and tests.
 - Prefect flows — nightly training with promotion gates, six-hourly drift checks
@@ -306,15 +302,11 @@ PostgreSQL instance.
   non-root user, healthchecks, and `api` / `pipeline` / `mlflow` targets.
 - `docker-compose.yml` — Postgres, MLflow, API, Prefect server + worker,
   Pushgateway, Prometheus, Grafana.
-- Helm chart — Deployment, Service, HPA, PDB, probes, ServiceMonitor, secrets,
-  NetworkPolicy, read-only root filesystem with scratch `emptyDir` mounts,
-  non-root `uid/gid 10001` and pod anti-affinity; rendered manifests are scored
-  with `kube-score` and schema-checked with `kubeconform` in CI.
 - Terraform — VPC, ECR, RDS Postgres, S3, Secrets Manager, ECS Fargate for API
   and MLflow, ALB with optional HTTPS, Cloud Map service discovery.
 - GitHub Actions — lint, strict mypy, tests + coverage, pip-audit, Trivy,
-  Docker builds, infra validation (Terraform, `helm lint`, `kubeconform`,
-  `kube-score`, `actionlint`), tag-based release with SBOM/provenance.
+  Docker builds, infra validation (Terraform and Docker Compose config),
+  tag-based release with SBOM/provenance.
 
 ## Quality gates
 
@@ -322,12 +314,12 @@ PostgreSQL instance.
 uv run ruff check src tests        # lint
 uv run ruff format --check src tests
 uv run mypy src                    # strict
-uv run pytest                      # 76 tests, coverage gate
+uv run pytest                      # 101 tests, 80% coverage gate
 uv run pre-commit run --all-files
 ```
 
-Current state: **93 tests passing**, **~84% branch coverage**, `ruff` clean,
-`mypy --strict` clean across 32 source modules.
+Current state: **101 tests passing**, **~87% branch coverage** (80% gate), `ruff`
+clean, `mypy --strict` clean. Coverage excludes the thin CLI dispatcher.
 
 ## Project layout
 
@@ -347,12 +339,9 @@ Current state: **93 tests passing**, **~84% branch coverage**, `ruff` clean,
 ├── tests/              # unit + integration tests
 ├── loadtest/           # k6 scenarios + how to read them
 ├── configs/            # Prometheus rules, Grafana provisioning + dashboard
-├── infra/
-│   ├── helm/churnguard/
-│   └── terraform/
+├── infra/terraform/    # AWS ECS/RDS/S3 stack
 ├── docs/               # architecture, ADRs, runbook
 ├── notebooks/          # read-only EDA
-├── dvc.yaml            # reproducible data pipeline
 └── docker-compose.yml  # full local platform
 ```
 

@@ -13,7 +13,7 @@ flowchart LR
 
     subgraph DataPlatform["Data platform"]
         B[ingest<br/>validate · checksum]
-        C[(DVC tracked<br/>raw / processed / reference)]
+        C[(Local files<br/>raw / processed / reference)]
     end
 
     subgraph Experimentation
@@ -37,9 +37,9 @@ flowchart LR
 
     subgraph Ops
         N[Prefect flows<br/>train · monitor]
-        O[Evidently drift<br/>PSI / KS / JS]
+        O[Drift tests<br/>KS / chi-square]
         P[Grafana + Alertmanager]
-        Q[Terraform · Helm · GH Actions]
+        Q[Terraform · GH Actions]
     end
 
     A --> B
@@ -64,11 +64,11 @@ flowchart LR
 | Stage | Command | Input | Output | Gate |
 |---|---|---|---|---|
 | Ingest | `churnguard ingest` | remote CSV | `data/raw/telco_churn.csv` | Pandera raw schema; size sanity check |
-| Split | `churnguard split` / `dvc repro` | raw CSV | processed train/test + reference Parquet | Processed schema; stratified split |
+| Split | `churnguard split` | raw CSV | processed train/test + reference Parquet | Processed schema; stratified split |
 | Tune | `churnguard train` | train Parquet | Optuna study | 5-fold stratified CV ROC-AUC |
 | Train | `churnguard train` | train Parquet | MLflow run + registry version | Signature inference, model card |
 | Promote | automatic | registry version | `champion` alias | AUC ≥ floor **and** no regression > tolerance |
-| Serve | `churnguard serve` | registry / fallback | HTTP predictions | `/ready` requires a loaded model |
+| Serve | `churnguard serve` | registry / fallback | HTTP predictions | `/ready` reports whether a model is loaded |
 | Monitor | `churnguard drift` | reference vs current | JSON + HTML + metrics | Drift share ≥ 30% raises an alert |
 | Orchestrate | Prefect flows | params | deployment runs | Retries + timeouts per task |
 
@@ -101,12 +101,11 @@ F1-optimal thresholds are searched on the test set and logged as
 `decision_threshold` on the model version. The API reads the value from the
 version tag, so risk tiers stay consistent across deployments and rollbacks.
 
-### 5. Drift detection degrades gracefully
+### 5. Drift detection is dependency-light
 
-Evidently 0.7 is the primary engine (per-column statistical tests + dataset
-drift). If the optional dependency or a specific column type breaks, the module
-falls back to a dependency-light KS / chi-square implementation. The API never
-depends on Evidently being importable; it only reads `reports/drift/latest.json`.
+Per-column KS tests for numeric features and chi-square tests for categorical
+features feed the drift share. The API never runs the tests itself; it only
+reads `reports/drift/latest.json`.
 
 ### 6. Configuration is 12-factor
 

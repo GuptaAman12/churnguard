@@ -2,17 +2,17 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-12
+- **Amended:** 2026-11-23 — DVC and Evidently removed; the pipeline group is Optuna + Prefect.
 
 ## Context
 
 A single image that can train, serve and run MLflow needs every library:
-XGBoost, Optuna, Evidently, Prefect, DVC, FastAPI, psycopg2, boto3. That image
-was ~7 GB because changing file ownership with `chown -R /app` duplicated every
-layer copy-on-write.
+XGBoost, Optuna, Prefect, FastAPI, psycopg2, boto3. That image was ~7 GB because
+changing file ownership with `chown -R /app` duplicated every layer copy-on-write.
 
 Serving only needs FastAPI, scikit-learn/XGBoost, the MLflow client, Pandera and
-PyArrow. Training needs Optuna/Evidently/Prefect/DVC. The MLflow server needs
-psycopg2 and boto3 but not XGBoost.
+PyArrow. Training needs Optuna/Prefect. The MLflow server needs psycopg2 and boto3
+but not XGBoost.
 
 ## Decision
 
@@ -29,7 +29,7 @@ psycopg2 and boto3 but not XGBoost.
 
 ## Consequences
 
-- The API image ships without Prefect, DVC, Evidently, Optuna or psycopg2.
+- The API image ships without Prefect, Optuna or psycopg2.
 - All targets still resolve from the same lockfile, so versions cannot drift.
 - A dependency used by two targets must be declared in the shared core (or in
   both groups); this is enforced by CI building every target.

@@ -40,7 +40,7 @@ open http://localhost:3000     # Grafana (admin/admin)
 open http://localhost:4200     # Prefect
 ```
 
-## Scenario: `/ready` returns 503
+## Scenario: `/ready` reports not ready
 
 1. `curl localhost:8000/model/info` → expect 503 with a message.
 2. Check API logs: `docker compose logs api | grep model_`.

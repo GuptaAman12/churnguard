@@ -68,17 +68,16 @@ jobs:
         with:
           version: "0.13.7"
       - name: Export locked requirements
-        run: uv export --format requirements-txt --no-hashes --all-groups > requirements.txt
+        run: uv export --format requirements-txt --no-hashes --all-groups --no-emit-project > requirements.txt
       - name: pip-audit
-        run: |
-          uv tool run pip-audit -r requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph || true
+        run: uv tool run pip-audit -r requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           severity: CRITICAL,HIGH
-          exit-code: "0"
+          exit-code: "1"
           ignore-unfixed: true
 
   docker:
@@ -129,41 +128,6 @@ jobs:
 
       - name: Validate docker compose
         run: docker compose config --quiet
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: v3.16.3
-
-      - name: Helm lint
-        run: helm lint infra/helm/churnguard
-
-      - name: Render Helm chart
-        run: helm template churnguard infra/helm/churnguard --namespace churnguard > /dev/null
-
-      - name: Install manifest linters
-        env:
-          KUBECONFORM_VERSION: v0.8.0
-          KUBE_SCORE_VERSION: v1.20.0
-        run: |
-          curl -sSLo /tmp/kubeconform.tar.gz \
-            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
-          sudo tar -xzf /tmp/kubeconform.tar.gz -C /usr/local/bin kubeconform
-          curl -sSLo /tmp/kube-score.tar.gz \
-            "https://github.com/zegl/kube-score/releases/download/${KUBE_SCORE_VERSION}/kube-score_${KUBE_SCORE_VERSION#v}_linux_amd64.tar.gz"
-          sudo tar -xzf /tmp/kube-score.tar.gz -C /usr/local/bin kube-score
-          kubeconform -v
-          kube-score version
-
-      - name: Validate rendered manifests (kubeconform)
-        run: |
-          helm template churnguard infra/helm/churnguard --namespace churnguard \
-            | kubeconform -strict -summary -kubernetes-version 1.31.0 -
-
-      - name: Score rendered manifests (kube-score)
-        run: |
-          helm template churnguard infra/helm/churnguard --namespace churnguard \
-            | kube-score score --output-format ci -
 
       - name: Terraform fmt & validate
         uses: hashicorp/setup-terraform@v4
