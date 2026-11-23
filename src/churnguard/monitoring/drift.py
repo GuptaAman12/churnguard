@@ -1,4 +1,4 @@
-"""Data-drift detection with Evidently, Prometheus export and HTML/JSON artifacts."""
+"""Data-drift detection with statistical tests, Prometheus export and HTML/JSON artifacts."""
 
 from __future__ import annotations
 
@@ -18,145 +18,11 @@ from churnguard.monitoring.summary import DriftSummary, FeatureDrift, write_summ
 
 logger = get_logger(__name__)
 
-_COLUMN_PATTERN = r"column=([^,)]+)"
-
 
 def _sample(frame: pd.DataFrame, size: int, seed: int = 42) -> pd.DataFrame:
     if len(frame) <= size:
         return frame.reset_index(drop=True)
     return frame.sample(n=size, random_state=seed).reset_index(drop=True)
-
-
-def _to_dict(snapshot: Any) -> dict[str, Any]:
-    for attribute in ("dict", "as_dict"):
-        method = getattr(snapshot, attribute, None)
-        if callable(method):
-            payload = method()
-            if isinstance(payload, dict):
-                return payload
-    raise RuntimeError("Unable to serialize Evidently snapshot")
-
-
-def _run_evidently(
-    reference: pd.DataFrame,
-    current: pd.DataFrame,
-    output_html: Path,
-) -> dict[str, Any] | None:
-    """Run the Evidently data-drift preset. Returns None if unavailable."""
-    try:
-        try:
-            from evidently import Report
-            from evidently.presets import DataDriftPreset
-        except ImportError:  # pragma: no cover - Evidently < 0.7
-            from evidently.metric_preset import DataDriftPreset
-            from evidently.report import Report
-
-        report = Report(metrics=[DataDriftPreset()])
-        snapshot = report.run(reference_data=reference, current_data=current)
-        output_html.parent.mkdir(parents=True, exist_ok=True)
-        save_html = getattr(snapshot, "save_html", None) or getattr(report, "save_html", None)
-        if callable(save_html):
-            save_html(str(output_html))
-        return _to_dict(snapshot)
-    except Exception as exc:  # pragma: no cover - optional dependency/runtime issue
-        logger.warning("evidently_report_failed", error=str(exc))
-        return None
-
-
-def _parse_evidently(
-    payload: dict[str, Any],
-    columns: list[str],
-) -> tuple[list[FeatureDrift], int, int]:
-    """Parse Evidently 0.7+ (``metric_name``/p-value) and legacy 0.6 snapshots."""
-    per_column: dict[str, FeatureDrift] = {}
-    drifted_count: int | None = None
-    total_count: int | None = None
-
-    for metric in payload.get("metrics", []):
-        metric_id = str(
-            metric.get("metric_name") or metric.get("metric_id") or metric.get("metric") or ""
-        )
-        config = metric.get("config") if isinstance(metric.get("config"), dict) else {}
-        value = metric.get("value", metric.get("result"))
-
-        if "DriftedColumnsCount" in metric_id and isinstance(value, dict):
-            drifted_count = int(value.get("count", 0))
-            total_count = int(value.get("total", len(columns)))
-            continue
-
-        if metric_id == "DatasetDriftMetric" and isinstance(value, dict):
-            drifted_count = int(value.get("number_of_drifted_columns", 0))
-            total_count = int(value.get("number_of_columns", len(columns)))
-            continue
-
-        if "ValueDrift" in metric_id or metric_id == "ColumnDriftMetric":
-            column_name = str(config.get("column") or "")
-            threshold = _maybe_float(config.get("threshold")) or 0.05
-            method = config.get("method")
-            if isinstance(value, dict):
-                column_name = column_name or str(
-                    value.get("column_name") or value.get("column") or ""
-                )
-                score = _maybe_float(value.get("drift_score", value.get("p_value")))
-                detected = bool(
-                    value.get("drift_detected", score is not None and score < threshold)
-                )
-                method = value.get("stattest_name") or value.get("method") or method
-            else:
-                # Evidently 0.7 ValueDrift emits a p-value (drift if below threshold)
-                # or a distance (drift if above threshold), depending on the method.
-                score = _maybe_float(value)
-                method_text = str(method or "").lower()
-                is_p_value = (
-                    "p_value" in method_text or "p-value" in method_text or "p value" in method_text
-                )
-                if score is None:
-                    detected = False
-                elif is_p_value:
-                    detected = score < threshold
-                else:
-                    detected = score > threshold
-                column_name = column_name or _extract_column(metric)
-            if column_name:
-                per_column[column_name] = FeatureDrift(
-                    feature=column_name,
-                    drift_detected=detected,
-                    drift_score=score,
-                    method=str(method) if method else None,
-                )
-
-    features = [per_column[column] for column in columns if column in per_column]
-    features.extend(item for key, item in per_column.items() if key not in columns)
-
-    drifted = (
-        drifted_count
-        if drifted_count is not None
-        else sum(item.drift_detected for item in features)
-    )
-    total = total_count or len(features) or len(columns)
-    return features, drifted, total
-
-
-def _extract_column(metric: dict[str, Any]) -> str:
-    config = metric.get("config")
-    if isinstance(config, dict) and config.get("column"):
-        return str(config["column"])
-    import re
-
-    match = re.search(_COLUMN_PATTERN, str(metric.get("metric_id", "")))
-    if match:
-        return match.group(1)
-    for key in ("column_name", "column"):
-        if metric.get(key):
-            return str(metric[key])
-    return ""
-
-
-def _maybe_float(value: Any) -> float | None:
-    try:
-        return float(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
 
 
 def simple_drift(
@@ -165,7 +31,7 @@ def simple_drift(
     columns: list[str],
     significance: float = 0.05,
 ) -> tuple[list[FeatureDrift], int, int]:
-    """Dependency-light fallback: KS test for numeric, chi-square for categorical."""
+    """KS test for numeric features, chi-square for categorical features."""
     results: list[FeatureDrift] = []
     for column in columns:
         if column not in reference.columns or column not in current.columns:
@@ -205,7 +71,7 @@ def simple_drift(
     return results, drifted, len(results) or len(columns)
 
 
-def _write_html_fallback(summary: DriftSummary, path: Path) -> None:
+def _write_html_report(summary: DriftSummary, path: Path) -> None:
     rows = "\n".join(
         f"<tr><td>{item.feature}</td><td>{'⚠️ yes' if item.drift_detected else 'no'}</td>"
         f"<td>{item.drift_score if item.drift_score is not None else ''}</td>"
@@ -265,14 +131,7 @@ def run_drift(
     output_dir = Path(output_dir or settings.reports_dir / "drift")
     output_dir.mkdir(parents=True, exist_ok=True)
     html_path = output_dir / "latest.html"
-    payload = _run_evidently(reference_sample, current_sample, html_path)
-
-    if payload is not None:
-        features, drifted, total = _parse_evidently(payload, columns)
-        if not features:
-            features, drifted, total = simple_drift(reference_sample, current_sample, columns)
-    else:
-        features, drifted, total = simple_drift(reference_sample, current_sample, columns)
+    features, drifted, total = simple_drift(reference_sample, current_sample, columns)
 
     drift_share = round(drifted / max(total, 1), 6)
     summary = DriftSummary(
@@ -289,8 +148,7 @@ def run_drift(
         reference_fingerprint=fingerprint(reference_sample),
         current_fingerprint=fingerprint(current_sample),
     )
-    if not html_path.exists():
-        _write_html_fallback(summary, html_path)
+    _write_html_report(summary, html_path)
 
     write_summary(summary, settings.drift_summary_path)
     history_dir = output_dir / "history"

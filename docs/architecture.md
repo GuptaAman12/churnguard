@@ -37,7 +37,7 @@ flowchart LR
 
     subgraph Ops
         N[Prefect flows<br/>train · monitor]
-        O[Evidently drift<br/>PSI / KS / JS]
+        O[Drift tests<br/>KS / chi-square]
         P[Grafana + Alertmanager]
         Q[Terraform · GH Actions]
     end
@@ -101,12 +101,11 @@ F1-optimal thresholds are searched on the test set and logged as
 `decision_threshold` on the model version. The API reads the value from the
 version tag, so risk tiers stay consistent across deployments and rollbacks.
 
-### 5. Drift detection degrades gracefully
+### 5. Drift detection is dependency-light
 
-Evidently 0.7 is the primary engine (per-column statistical tests + dataset
-drift). If the optional dependency or a specific column type breaks, the module
-falls back to a dependency-light KS / chi-square implementation. The API never
-depends on Evidently being importable; it only reads `reports/drift/latest.json`.
+Per-column KS tests for numeric features and chi-square tests for categorical
+features feed the drift share. The API never runs the tests itself; it only
+reads `reports/drift/latest.json`.
 
 ### 6. Configuration is 12-factor
 

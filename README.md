@@ -5,7 +5,7 @@ Data validation → experiment tracking → model registry with gated promotion 
 containerised inference with hot-reload → drift monitoring → infrastructure as code.
 
 Built with Python 3.12, `uv`, scikit-learn/XGBoost, MLflow, Optuna, Prefect,
-Pandera, Evidently, FastAPI, Prometheus/Grafana, Docker Compose and Terraform.
+Pandera, FastAPI, Prometheus/Grafana, Docker Compose and Terraform.
 
 <p>
   <a href="https://github.com/GuptaAman12/churnguard/actions/workflows/ci.yml">
@@ -31,7 +31,7 @@ actually breaks in production: **the seams**.
 | Data → training | Silent schema corruption | Pandera contract gate before training; manifests with content fingerprints |
 | Training → production | Unreviewed model swaps | MLflow registry + `champion` alias + quality/regression gates with audit tags |
 | Production → operator | "It's down and we don't know why" | `/health`, `/ready`, `/model/info`, Prometheus metrics, Grafana dashboard, alert rules |
-| Model → reality | Concept/data drift | Evidently drift reports, per-feature p-values, Prometheus export, retraining flow |
+| Model → reality | Concept/data drift | KS / chi-square drift reports, per-feature p-values, Prometheus export, retraining flow |
 | Model → human | "Why did it predict that?" | Exact TreeSHAP contributions at `/explain`, plus calibrated probabilities |
 | Local → cloud | Snowflake environments | One container image, 12-factor config, Compose for dev, Terraform/ECS for prod |
 
@@ -116,7 +116,7 @@ flowchart LR
     E --> H[(MLflow registry)]
     H -->|champion alias| I[FastAPI /predict<br/>/explain]
     I --> J[Prometheus / Grafana]
-    K[Evidently drift] --> J
+    K[Statistical drift] --> J
     L[Prefect flows] --> D
     L --> K
 ```
@@ -288,9 +288,8 @@ PostgreSQL instance.
 
 ### Monitoring & orchestration
 
-- `monitoring/drift.py` — Evidently 0.7 per-column tests, HTML + JSON artifacts,
-  history snapshots, Pushgateway export, and a statistical fallback that keeps
-  working if Evidently breaks.
+- `monitoring/drift.py` — per-column KS / chi-square tests, HTML + JSON
+  artifacts, history snapshots and Pushgateway export.
 - `monitoring/simulate.py` — realistic production-shift generator (pricing,
   tenure, contract mix, product mix) for demos and tests.
 - Prefect flows — nightly training with promotion gates, six-hourly drift checks
@@ -315,11 +314,11 @@ PostgreSQL instance.
 uv run ruff check src tests        # lint
 uv run ruff format --check src tests
 uv run mypy src                    # strict
-uv run pytest                      # 102 tests, 80% coverage gate
+uv run pytest                      # 101 tests, 80% coverage gate
 uv run pre-commit run --all-files
 ```
 
-Current state: **102 tests passing**, **~84% branch coverage** (80% gate), `ruff`
+Current state: **101 tests passing**, **~87% branch coverage** (80% gate), `ruff`
 clean, `mypy --strict` clean. Coverage excludes the thin CLI dispatcher.
 
 ## Project layout

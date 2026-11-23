@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+
+- Helm chart and DVC pipeline: ECS/Terraform is the only deploy path, and the
+  CLI covers ingest/split.
+- Evidently: the built-in KS/chi-square drift tests replace it, dropping the
+  dependency and the pandas 3 ceiling.
+- Unused `pyyaml`, `python-dotenv` and `types-pyyaml` dependencies.
+
+### Changed
+
+- Security scans now fail the build; pytest enforces an 80% coverage floor.
+- The nightly Prefect run no longer fabricates drift (`run_drift=False`).
+
 ## [0.3.1] - 2026-11-15
 
 ### Fixed

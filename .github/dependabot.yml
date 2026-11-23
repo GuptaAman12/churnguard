@@ -13,7 +13,6 @@ updates:
           - "scikit-learn*"
           - "xgboost*"
           - "optuna*"
-          - "evidently*"
           - "pandera*"
       dev-tooling:
         patterns:
@@ -21,7 +20,7 @@ updates:
           - "mypy*"
           - "pytest*"
           - "pre-commit*"
-    # Evidently 0.7 constrains pandas<3; remove once it declares support.
+    # pandas 3 is a separate migration; keep the cap until the pipeline is tested.
     ignore:
       - dependency-name: "pandas"
         versions: [">=3"]

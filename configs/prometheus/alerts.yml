@@ -51,4 +51,4 @@ groups:
           summary: "ChurnGuard feature drift above 30%"
           description: >
             More than 30% of monitored features are drifting. Inspect the
-            Evidently report and consider retraining via the Prefect flow.
+            drift report and consider retraining via the Prefect flow.

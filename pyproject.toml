@@ -35,7 +35,6 @@ dependencies = [
 # Installed by the pipeline/worker image only (training + orchestration + drift).
 pipeline = [
   "boto3>=1.35",
-  "evidently>=0.6",
   "optuna>=4.0",
   "prefect>=3.9,<4",
 ]
@@ -95,7 +94,6 @@ exclude = ["^\\.venv", "^mlruns"]
 [[tool.mypy.overrides]]
 module = [
   "mlflow.*",
-  "evidently.*",
   "prefect.*",
   "optuna.*",
   "joblib.*",
@@ -114,7 +112,6 @@ markers = [
   "integration: tests that need external services (MLflow, network, Docker)",
   "slow: long-running tests",
 ]
-filterwarnings = ["ignore::DeprecationWarning:evidently.*"]
 
 [tool.coverage.run]
 source = ["src/churnguard"]
