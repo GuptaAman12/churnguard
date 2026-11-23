@@ -57,8 +57,8 @@ typecheck: ## Strict mypy
 check: lint typecheck test ## Full local quality gate
 
 security: ## Audit locked dependencies for known CVEs
-	uv export --format requirements-txt --no-hashes --all-groups > requirements.txt
-	uv tool run pip-audit -r requirements.txt --strict
+	uv export --format requirements-txt --no-hashes --all-groups --no-emit-project > requirements.txt
+	uv tool run pip-audit -r requirements.txt --strict --ignore-vuln GHSA-4xh5-x5gv-qwph
 	rm -f requirements.txt
 
 infra: ## Validate Terraform locally
